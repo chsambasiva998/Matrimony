@@ -1,61 +1,61 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ShieldCheck, Star, Lock, Eye, Bookmark, Heart, 
   Send, Inbox, Wallet, X, Copy, Menu, CheckCircle, BadgeCheck 
 } from 'lucide-react';
 
-// Standardized Configuration Enums for Multipliers
 const INCOME_MAP = { '3-5 LPA': 1, '5-10 LPA': 2, '10-15 LPA': 3, '15-25 LPA': 4, '25-50 LPA': 5, '50+ LPA': 6 };
 const ASSET_MAP = { 'No Assets': 0, 'Below 50 Lakhs': 1, '50 Lakhs - 1 Crore': 2, '1 - 3 Crores': 3, '3 - 5 Crores': 4, '5 - 10 Crores': 5, '10 - 20 Crores': 6, '20 Crores+': 7 };
 
+// Completely anonymized system defaults
 const CORE_MASTER_SEEDS = [
   {
-    __backendId: "user_seed_sambasiva_rao",
-    profile_id: "TV48291",
-    first_name: "Sambasiva Rao",
-    last_name: "Chippada",
-    email: "sambasiva.rao@example.com",
-    phone: "+91 98765 43210",
-    age: 27,
+    __backendId: "system_anonymized_groom_01",
+    profile_id: "PP10001",
+    first_name: "Groom #1",
+    last_name: "[Hidden]",
+    email: "groom1@example.com",
+    phone: "+91 99999 99999",
+    age: 28,
     gender: "Male",
     marital_status: "Never Married",
-    height: "5'8\"",
+    height: "5'9\"",
     bloodGroup: "O+",
     education: "B.Tech/B.E",
     occupation: "Software Engineer",
-    income: "15-25 LPA",
-    city: "Vijayawada",
+    income: "10-15 LPA",
+    city: "Hyderabad",
     caste: "Kapu",
-    gothram: "Bharadwaja",
-    rashi: "Makara",
+    gothram: "Srivatsa",
+    rashi: "Mesha",
     padam: "1",
     kujaDosham: "No (లేదు)",
-    nakshatra: "Dhanishta",
+    nakshatra: "Ashwini",
     diet: "Vegetarian",
     physicalStatus: "Normal Status",
-    fatherName: "Satyanarayana Rao",
-    motherName: "Lakshmi Devi",
-    maternalSurnames: "Ganni, Penugonda",
-    propertyWorth: "3 - 5 Crores",
-    landDetails: "3.5 Acres near Gannavaram bypass",
-    houseDetails: "G+2 Duplex plot in Vijayawada city limits",
+    fatherName: "System Default Father",
+    motherName: "System Default Mother",
+    maternalSurnames: "Sample1, Sample2",
+    propertyWorth: "1 - 3 Crores",
+    landDetails: "2 Acres agricultural asset",
+    houseDetails: "Independent building plot",
     abroadStatus: "Open to both",
-    about: "Developing custom architecture models and security software stacks.",
+    about: "System placeholder asset description tier.",
     profile_status: "approved",
     is_admin: true,
-    interests_received: "user_seed_bride_sravani",
+    interests_received: "system_anonymized_bride_01",
     shortlisted: "",
     contact_purchases: "",
     avatar_source: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
   },
   {
-    __backendId: "user_seed_bride_sravani",
-    profile_id: "TV92014",
-    first_name: "Sravani",
-    last_name: "Muvva",
-    email: "sravani.m@example.com",
-    phone: "+91 91234 56789",
-    age: 24,
+    __backendId: "system_anonymized_bride_01",
+    profile_id: "PP20001",
+    first_name: "Bride #1",
+    last_name: "[Hidden]",
+    email: "bride1@example.com",
+    phone: "+91 88888 88888",
+    age: 25,
     gender: "Female",
     marital_status: "Never Married",
     height: "5'4\"",
@@ -63,7 +63,7 @@ const CORE_MASTER_SEEDS = [
     education: "MBA",
     occupation: "Banking",
     income: "5-10 LPA",
-    city: "Vijayawada",
+    city: "Visakhapatnam",
     caste: "Kapu",
     gothram: "Janakula",
     rashi: "Kanya",
@@ -72,14 +72,14 @@ const CORE_MASTER_SEEDS = [
     nakshatra: "Hasta",
     diet: "Vegetarian",
     physicalStatus: "Normal Status",
-    fatherName: "Ramesh Babu",
-    motherName: "Vasundhara",
-    maternalSurnames: "Kaza, Thota",
-    propertyWorth: "5 - 10 Crores",
-    landDetails: "Commercial shop front layout spaces",
-    houseDetails: "Independent residential asset portfolio plots",
+    fatherName: "System Default Father",
+    motherName: "System Default Mother",
+    maternalSurnames: "Sample3, Sample4",
+    propertyWorth: "3 - 5 Crores",
+    landDetails: "Commercial space assets",
+    houseDetails: "Residential villa asset",
     abroadStatus: "Looking for local matches only",
-    about: "Traditional family values, interested in aligned compatibility standings.",
+    about: "System placeholder asset description tier.",
     profile_status: "approved",
     is_admin: false,
     interests_received: "",
@@ -89,7 +89,6 @@ const CORE_MASTER_SEEDS = [
   }
 ];
 
-// Reusable Secure Watermarked Canvas Component to prevent state rerender sync crashes
 function SecureAvatar({ imageUrl, watermarkText }) {
   const canvasRef = useRef(null);
 
@@ -103,14 +102,12 @@ function SecureAvatar({ imageUrl, watermarkText }) {
     img.onload = () => {
       ctx.clearRect(0, 0, 120, 120);
       ctx.drawImage(img, 0, 0, 120, 120);
-      
-      // Inject secure dynamic canvas protection transformations
       ctx.save();
       ctx.rotate(-25 * Math.PI / 180);
       ctx.font = "bold 9px DM Sans";
       ctx.fillStyle = "rgba(123, 31, 31, 0.45)";
       ctx.fillText(watermarkText, -10, 50);
-      ctx.fillText("T-VIVAHAM", -10, 65);
+      ctx.fillText("P-PUSTHAKAM", -10, 65);
       ctx.restore();
     };
   }, [imageUrl, watermarkText]);
@@ -126,24 +123,21 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [toastMessage, setToastMessage] = useState('');
   
-  // Search Filters State
   const [filterGender, setFilterGender] = useState('');
   const [filterCaste, setFilterCaste] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [financialFilterActive, setFinancialFilterActive] = useState(false);
   
-  // Modals Management State
   const [selectedProfileId, setSelectedProfileId] = useState(null);
   const [showUpiModal, setShowUpiModal] = useState(false);
 
-  // Registration Form State
   const [regForm, setRegForm] = useState({
-    first_name: '', last_name: '', email: '', phone: '', age: 27, gender: 'Male',
+    first_name: '', last_name: '', email: '', phone: '', age: 25, gender: 'Male',
     marital_status: 'Never Married', height: "5'8\"", bloodGroup: 'O+', caste: 'Kapu',
-    gothram: '', nakshatra: 'Dhanishta', padam: '1', rashi: 'Makara', kujaDosham: 'No (లేదు)',
-    education: 'B.Tech/B.E', occupation: 'Software Engineer', income: '15-25 LPA',
-    city: 'Vijayawada', diet: 'Vegetarian', physicalStatus: 'Normal Status',
-    fatherName: '', motherName: '', maternalSurnames: '', propertyWorth: '3 - 5 Crores',
+    gothram: '', nakshatra: 'Ashwini', padam: '1', rashi: 'Mesha', kujaDosham: 'No (లేదు)',
+    education: 'B.Tech/B.E', occupation: 'Software Engineer', income: '5-10 LPA',
+    city: 'Hyderabad', diet: 'Vegetarian', physicalStatus: 'Normal Status',
+    fatherName: '', motherName: '', maternalSurnames: '', propertyWorth: '1 - 3 Crores',
     landDetails: '', houseDetails: '', abroadStatus: 'Open to both', about: '',
     avatar_source: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
   });
@@ -200,7 +194,7 @@ export default function App() {
     const payload = {
       ...regForm,
       __backendId: "user_runtime_" + Date.now(),
-      profile_id: "TV" + Math.floor(10000 + Math.random() * 90000),
+      profile_id: "PP" + Math.floor(10000 + Math.random() * 90000),
       profile_status: "approved",
       is_admin: false, interests_received: "", shortlisted: "", contact_purchases: ""
     };
@@ -255,7 +249,6 @@ export default function App() {
     triggerToast("Premium token applied! Contact assets unlocked safely.");
   };
 
-  // Memoized secure calculation filter layer
   const computedTargetGender = filterGender || (currentUser?.gender === 'Male' ? 'Female' : 'Male');
   
   const filteredProfiles = useMemo(() => {
@@ -266,12 +259,10 @@ export default function App() {
       if (filterCaste && profile.caste !== filterCaste) return false;
       if (filterCity && !(profile.city || '').toLowerCase().includes(filterCity.toLowerCase())) return false;
 
-      // Strict Lineage Validation Engine
       if (currentUser?.gothram && profile.gothram) {
         if (currentUser.gothram.trim().toLowerCase() === profile.gothram.trim().toLowerCase()) return false;
       }
 
-      // Asymmetric Financial Indicator Evaluation Logic
       if (financialFilterActive && currentUser) {
         const myIncomeTier = INCOME_MAP[currentUser.income] || 1;
         const matchIncomeTier = INCOME_MAP[profile.income] || 1;
@@ -302,8 +293,8 @@ export default function App() {
       <nav className="w-full bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-orange-100">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => setCurrentView('home')}>
-            <div className="w-9 h-9 gradient-primary rounded-lg flex items-center justify-center text-white font-heading font-bold text-lg">మ</div>
-            <span className="font-heading font-bold text-xl text-[#7b1f1f]">Telugu Vivaham</span>
+            <div className="w-9 h-9 bg-gradient-to-br from-[#7b1f1f] to-[#d4a017] rounded-lg flex items-center justify-center text-white font-heading font-bold text-lg">మ</div>
+            <span className="font-heading font-bold text-xl text-[#7b1f1f]">Pelli Pusthakam</span>
           </div>
 
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
@@ -344,9 +335,11 @@ export default function App() {
       <main className="flex-1 w-full">
         {currentView === 'home' && (
           <section className="w-full">
-            <div className="gradient-primary py-16 md:py-24 px-4 text-center text-white">
-              <h1 className="font-heading text-3xl md:text-5xl font-bold mb-4">Find Your Perfect Life Partner</h1>
-              <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">Trusted Telugu matrimony community with rigorous asset privacy shields, verified family lineage credentials, and intelligent status compatibility mapping logic.</p>
+            <div className="bg-gradient-to-br from-[#7b1f1f] via-[#912525] to-[#d4a017] py-16 md:py-24 px-4 text-center text-white">
+              <h1 className="font-heading text-3xl md:text-5xl font-bold mb-4 tracking-wide">Pelli Pusthakam</h1>
+              <p className="text-lg md:text-2xl font-medium italic opacity-95 mb-8 max-w-3xl mx-auto tracking-wider font-heading">
+                Kalyanam... Kamaneeyam... Jeevitham...
+              </p>
               <button onClick={() => setCurrentView('register')} className="bg-white text-[#7b1f1f] font-bold px-8 py-3 rounded-xl shadow-lg transition-transform hover:scale-105">Register Profile Free</button>
             </div>
           </section>
@@ -398,11 +391,11 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-600 mb-1">Gothram *</label>
-                      <input type="text" required value={regForm.gothram} onChange={e => setRegForm({...regForm, gothram: e.target.value})} className="w-full border rounded-lg px-4 py-2.5 text-sm bg-[#fffbf7] outline-none" placeholder="E.g., Bharadwaja" />
+                      <input type="text" required value={regForm.gothram} onChange={e => setRegForm({...regForm, gothram: e.target.value})} className="w-full border rounded-lg px-4 py-2.5 text-sm bg-[#fffbf7] outline-none" placeholder="E.g., Srivatsa" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-600 mb-1">Hometown Location *</label>
-                      <input type="text" required value={regForm.city} onChange={e => setRegForm({...regForm, city: e.target.value})} className="w-full border rounded-lg px-4 py-2.5 text-sm bg-[#fffbf7] outline-none" placeholder="E.g., Vijayawada" />
+                      <input type="text" required value={regForm.city} onChange={e => setRegForm({...regForm, city: e.target.value})} className="w-full border rounded-lg px-4 py-2.5 text-sm bg-[#fffbf7] outline-none" placeholder="E.g., Hyderabad" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-600 mb-1">Annual Income Bracket *</label>
@@ -418,9 +411,9 @@ export default function App() {
                     <div>
                       <label className="block text-xs font-bold text-gray-600 mb-1">Estimated Family Net Worth *</label>
                       <select value={regForm.propertyWorth} onChange={e => setRegForm({...regForm, propertyWorth: e.target.value})} className="w-full border rounded-lg px-4 py-2.5 text-sm bg-[#fffbf7] outline-none">
+                        <option value="1 - 3 Crores">1 - 3 Crores</option>
                         <option value="3 - 5 Crores">3 - 5 Crores</option>
                         <option value="5 - 10 Crores">5 - 10 Crores</option>
-                        <option value="10 - 20 Crores">10 - 20 Crores</option>
                         <option value="20 Crores+">20 Crores+</option>
                       </select>
                     </div>
@@ -507,12 +500,11 @@ export default function App() {
                   <div key={p.__backendId} className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 flex flex-col justify-between h-full relative group">
                     <div>
                       <div className="flex justify-between items-start mb-3">
-                        <span className="padam-badge text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">{p.profile_id}</span>
+                        <span className="bg-gradient-to-br from-[#7b1f1f] to-[#912525] text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">{p.profile_id}</span>
                         <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1"><BadgeCheck className="w-3 h-3" /> Verified Node</span>
                       </div>
                       
                       <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => setSelectedProfileId(p.__backendId)}>
-                        {/* Invokes Dedicated Anti-Scraping Canvas protection abstraction */}
                         <SecureAvatar imageUrl={p.avatar_source} watermarkText={currentUser ? currentUser.profile_id : "PUBLIC"} />
                         <div className="min-w-0">
                           <h4 className="font-bold text-[#2c1810] truncate text-base">
@@ -523,7 +515,7 @@ export default function App() {
                       </div>
 
                       <div className="space-y-1.5 text-xs text-gray-600 mb-4 border-t pt-2 border-dashed border-gray-100 font-medium">
-                        <p className="text-[#7b1f1f] font-bold">🌟 {p.nakshatra} ({p.padam}వ పాదం) • Rasi: {p.rashi}</p>
+                        <p className="text-[#7b1f1f] font-bold">🌟 {p.nakshatra} (${p.padam}వ పాదం) • Rasi: {p.rashi}</p>
                         <p>🪐 Gothram: {p.gothram}</p>
                         <p className="truncate">🎓 {p.education} • {p.occupation}</p>
                         <p className="text-[10px] text-gray-400 font-bold bg-amber-50/50 p-1 rounded mt-1">💰 Financial Tier: {p.income} • Assets: {p.propertyWorth}</p>
@@ -631,8 +623,8 @@ export default function App() {
             <h3 className="font-heading font-bold text-xl mb-2 flex items-center gap-2"><Wallet className="w-5 h-5 text-orange-500" /> Complete Verification Remittance</h3>
             <p className="text-xs text-gray-500 mb-4">Copy the destination address string below to route your payment processing token.</p>
             <div className="flex items-center gap-2 bg-gray-100 p-3 rounded-lg mb-6">
-              <span className="text-xs font-mono flex-1 break-all font-bold">sambasiva.rao@upi</span>
-              <button onClick={() => { navigator.clipboard.writeText("sambasiva.rao@upi"); triggerToast("UPI address mapped to clipboard."); }} className="text-blue-600"><Copy className="w-4 h-4" /></button>
+              <span className="text-xs font-mono flex-1 break-all font-bold">admin@upi</span>
+              <button onClick={() => { navigator.clipboard.writeText("admin@upi"); triggerToast("UPI address mapped to clipboard."); }} className="text-blue-600"><Copy className="w-4 h-4" /></button>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowUpiModal(false)} className="flex-1 border py-2 rounded-lg text-xs font-medium">Cancel</button>
@@ -643,7 +635,7 @@ export default function App() {
       )}
 
       <footer className="bg-[#2c1810] text-white/50 text-center py-6 text-xs border-t border-white/5 mt-auto">
-        <p>© 2026 Telugu Vivaham. Built for mybestwater.in. Secure Lineage Data Matching Pipelines.</p>
+        <p>© 2026 Pelli Pusthakam. Built for mybestwater.in. Secure Lineage Data Matching Pipelines.</p>
       </footer>
     </div>
   );
