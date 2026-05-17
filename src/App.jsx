@@ -15,7 +15,7 @@ const DISTRICTS = [
   'YSR Kadapa (వైఎస్ఆర్ కడప)', 'Warangal (వరంగల్)', 'Khammam (ఖమ్మం)', 'Nalgonda (నల్గొండ)'
 ].sort();
 
-// 🔱 CASTE & SUB-CASTE RELATION MAP
+// 🔱 CASTE MATRIX
 const CASTE_MATRIX = {
   "Brahmin (బ్రాహ్మణ)": ["Niyogi", "Vaidiki", "Velanadu", "Dravida", "Madhva", "Sri Vaishnava", "Other"],
   "Kamma (కమ్మ)": ["Pedda Kamma", "Chinna Kamma", "Illuvellani", "Godachatu", "Other"],
@@ -37,7 +37,7 @@ const CASTE_MATRIX = {
   "Other Caste / Inter-Caste": ["No Bar / General"]
 };
 
-// 🔮 TELUGU NAKSHATRAMS
+// 🔮 NAKSHATRAMS
 const NAKSHATRAMS = [
   'Ashwini (అశ్విని)', 'Bharani (భరణి)', 'Krittika (కృత్తిక)', 'Rohini (రోహిణి)', 
   'Mrigashira (మృగశిర)', 'Ardra (ఆరుద్ర)', 'Punarvasu (పునర్వసు)', 'Pushya (పుష్యమి)', 
@@ -48,7 +48,7 @@ const NAKSHATRAMS = [
   'Satabhisha (శతభిషం)', 'Purva Bhadrapada (పూర్వాభాద్ర)', 'Uttara Bhadrapada (ఉత్తరాభాద్ర)', 'Revati (రేవతి)'
 ];
 
-// 📊 LOCALIZED TRANSLATIONS
+// 📊 TRANSLATIONS
 const TRANSLATIONS = {
   te: {
     logoTitle: "మంగళసూత్రం వివాహ వేదిక", logoSub: "నమ్మకమైన సంబంధాల కేంద్రం",
@@ -99,7 +99,7 @@ const TRANSLATIONS = {
   }
 };
 
-// 🛠️ SMART IMAGE COMPRESSOR (Fixes Firestore 1MB Limits)
+// 🛠️ COMPRESSOR
 const compressImage = (file) => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -115,7 +115,6 @@ const compressImage = (file) => {
         canvas.height = img.height * scaleSize;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        // Compress to 70% JPEG to safely fit inside Firestore limits
         resolve(canvas.toDataURL('image/jpeg', 0.7)); 
       };
     };
@@ -129,7 +128,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('matches');
   const [user, setUser] = useState(null);
   const [myProfileData, setMyProfileData] = useState(null);
-  const [isProfileLoaded, setIsProfileLoaded] = useState(false); // Prevents Ghost Typing Bug
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const [profiles, setProfiles] = useState([]);
   
   const [authEmail, setAuthEmail] = useState('');
@@ -143,7 +142,6 @@ export default function App() {
 
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterCaste, setFilterCaste] = useState('');
-  const [filterRasi, setFilterRasi] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', age: '', height: "5'4\"", gender: 'Female',
@@ -167,7 +165,6 @@ export default function App() {
           if (!snapshot.empty) {
             const docData = snapshot.docs[0].data();
             setMyProfileData({ id: snapshot.docs[0].id, ...docData });
-            // Safe initial load to prevent input wiping
             if (!isProfileLoaded) {
               setFormData(docData);
               setIsProfileLoaded(true);
@@ -199,7 +196,7 @@ export default function App() {
 
   const executeAadhaarShield = () => {
     if (aadhaarNumber.length !== 12 || isNaN(aadhaarNumber)) {
-      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ తప్పనిసరిగా 12 అంకెలు ఉండాలి!' : '❌ Aadhaar numeric string must be exactly 12 digits.');
+      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ 12 అంకెలు ఉండాలి!' : '❌ Invalid 12-Digit Aadhaar format.');
       return;
     }
     setAadhaarStatus('VERIFYING');
@@ -209,11 +206,11 @@ export default function App() {
   const handleRegistrationFlow = async (e) => {
     e.preventDefault();
     if (selectedPhotos.length < 1) {
-      setFormError(lang === 'te' ? '⚠️ ప్రొఫైల్ ఫోటోను జతపరచండి.' : '⚠️ Primary photo asset missing.');
+      setFormError(lang === 'te' ? '⚠️ ప్రొఫైల్ ఫోటో జతపరచండి.' : '⚠️ Photo asset missing.');
       return;
     }
     if (aadhaarStatus !== 'VERIFIED') {
-      setFormError(lang === 'te' ? '🛡️ దయచేసి ఆధార్ వెరిఫికేషన్ పూర్తి చేయండి.' : '🛡️ Identity validation incomplete.');
+      setFormError(lang === 'te' ? '🛡️ ఆధార్ వెరిఫికేషన్ పూర్తి చేయండి.' : '🛡️ Identity validation incomplete.');
       return;
     }
     setFormError('');
@@ -221,14 +218,11 @@ export default function App() {
 
     try {
       await createUserWithEmailAndPassword(auth, formData.email, authPassword);
-      
-      // 🛠️ Execute Canvas Compression Matrix
       const base64Encodings = [];
       for (let i = 0; i < selectedPhotos.length; i++) {
         const compressedData = await compressImage(selectedPhotos[i]);
         base64Encodings.push(compressedData);
       }
-
       const generatedProfileId = "MMS" + Math.floor(100000 + Math.random() * 900000);
       await addDoc(collection(db, "profiles"), {
         ...formData,
@@ -237,7 +231,7 @@ export default function App() {
         isPremium: false,
         aadhaarVerified: true
       });
-      alert(lang === 'te' ? `🎉 మీ ప్రొఫైల్ ఐడి: ${generatedProfileId}` : `🎉 Profile deployed: ${generatedProfileId}`);
+      alert(lang === 'te' ? `🎉 ఐడి: ${generatedProfileId}` : `🎉 Profile deployed: ${generatedProfileId}`);
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -251,7 +245,7 @@ export default function App() {
     setIsSubmitting(true);
     try {
       await updateDoc(doc(db, "profiles", myProfileData.id), formData);
-      alert(lang === 'te' ? '✅ మీ ప్రాధాన్యతలు విజయవంతంగా నవీకరించబడ్డాయి!' : '✅ Match records updated.');
+      alert(lang === 'te' ? '✅ ప్రాధాన్యతలు నవీకరించబడ్డాయి!' : '✅ Match records updated.');
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -266,7 +260,7 @@ export default function App() {
     try {
       await signInWithEmailAndPassword(auth, authEmail, authPassword);
     } catch (err) {
-      setFormError(lang === 'te' ? '❌ వివరాలు సరిపోలలేదు. మరలా ప్రయత్నించండి.' : '❌ Credentials error.');
+      setFormError(lang === 'te' ? '❌ వివరాలు సరిపోలలేదు.' : '❌ Credentials error.');
     } finally {
       setIsSubmitting(false);
     }
@@ -289,7 +283,6 @@ export default function App() {
     }
   };
 
-  // Securely resolves opposite gender, defaults to 'Loading' to prevent Empty Feed Flash
   const targetMatchGender = myProfileData ? (myProfileData.gender === 'Male' ? 'Female' : 'Male') : 'Loading'; 
 
   return (
@@ -377,7 +370,6 @@ export default function App() {
                     <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.caste}</label>
                     <select value={formData.caste} onChange={e => {
                       const selectedCaste = e.target.value;
-                      // Fallback fixes the crashing array bug
                       setFormData({...formData, caste: selectedCaste, subCaste: CASTE_MATRIX[selectedCaste]?.[0] || 'General'});
                     }} className="w-full border rounded-xl p-2.5 bg-white text-xs">
                       {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
@@ -522,61 +514,60 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Smart Fallback handles empty array logic seamlessly */}
-                  {profiles.filter(p => targetMatchGender !== 'Loading' && p.gender === targetMatchGender).length === 0 && targetMatchGender !== 'Loading' ? (
-                    <div className="col-span-full text-center bg-white border border-dashed p-12 text-gray-400 rounded-3xl italic">{t.noMatches}</div>
-                  ) : (
-                    profiles
-                      .filter(p => p.gender === targetMatchGender) 
-                      .filter(p => !filterCaste || p.caste === filterCaste)
-                      .filter(p => !filterDistrict || p.district === filterDistrict)
-                      .map(profile => (
-                        <div key={profile.id} className="bg-white border-2 border-[#E8C99A]/20 rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all duration-300">
-                          <div>
-                            <div className="h-52 bg-zinc-100 relative overflow-hidden flex items-center justify-center">
-                              {profile.photos && profile.photos.length > 0 ? (
-                                <img src={profile.photos[0]} alt="Profile" className="w-full h-full object-cover" />
+                  {profiles.filter(p => targetMatchGender !== 'Loading' && p.gender === targetMatchGender).length === 0 && targetMatchGender !== 'Loading' 
+                    ? <div className="col-span-full text-center bg-white border border-dashed p-12 text-gray-400 rounded-3xl italic">{t.noMatches}</div>
+                    : profiles
+                        .filter(p => p.gender === targetMatchGender) 
+                        .filter(p => !filterCaste || p.caste === filterCaste)
+                        .filter(p => !filterDistrict || p.district === filterDistrict)
+                        .map(profile => (
+                          <div key={profile.id} className="bg-white border-2 border-[#E8C99A]/20 rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all duration-300">
+                            <div>
+                              <div className="h-52 bg-zinc-100 relative overflow-hidden flex items-center justify-center">
+                                {profile.photos && profile.photos.length > 0 ? (
+                                  <img src={profile.photos[0]} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-5xl opacity-20">{profile.gender === 'Female' ? '👩' : '👨'}</span>
+                                )}
+                                <div className="absolute top-2.5 right-2.5 bg-emerald-700 text-white text-[8px] font-extrabold px-2 py-0.5 rounded shadow">Aadhaar Verified</div>
+                                <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">{t.id}: {profile.profileId || 'MMS-Temp'}</div>
+                              </div>
+
+                              <div className="p-4 space-y-3">
+                                <div className="flex justify-between items-center border-b pb-2">
+                                  <h4 className="font-bold text-base text-[#7B1F1F]">{profile.firstName}</h4>
+                                  <span className="text-[10px] font-extrabold text-[#7B1F1F] bg-[#7B1F1F]/5 border px-2 py-0.5 rounded max-w-[120px] truncate">{profile.caste}</span>
+                                </div>
+
+                                <div className="text-xs grid grid-cols-2 gap-y-2 text-gray-600 font-semibold">
+                                  <p>🎂 {t.age}: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
+                                  <p>📍 {t.district}: <span className="text-gray-900 font-bold">{profile.district?.split(' ')[0]}</span></p>
+                                  <p>🌟 {t.star}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.nakshatra?.split(' ')[0]}</span></p>
+                                  <p>🔮 {t.rasi}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.rasi?.split(' ')[0]}</span></p>
+                                  <p className="col-span-2 text-[11px] border-t pt-1.5 text-gray-500">{t.education}: <span className="text-gray-900 font-bold">{profile.education}</span></p>
+                                  <p className="col-span-2 text-[11px] text-gray-500">{t.income}: <span className="text-gray-900 font-bold">{profile.annualIncome}</span></p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-[#FFFBF7] border-t border-gray-100 rounded-b-3xl">
+                              {myProfileData?.isPremium ? (
+                                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800 font-bold space-y-1">
+                                  <p>📞 {t.phone}: {profile.phone || 'Protected'}</p>
+                                  <p>📧 {t.email}: {profile.email || 'Protected'}</p>
+                                  <p>🔱 {t.gothram}: <span className="text-gray-800 font-mono">{profile.gothram || 'Shiva'}</span></p>
+                                  <p>🧬 {t.subCaste}: <span className="text-purple-900">{profile.subCaste || 'General'}</span></p>
+                                </div>
                               ) : (
-                                <span className="text-5xl opacity-20">{profile.gender === 'Female' ? '👩' : '👨'}</span>
+                                <div className="text-center">
+                                  <p className="text-[10px] text-amber-900 font-bold mb-2">{t.lockedWarning}</p>
+                                  <button onClick={() => setActiveTab('payment')} className="w-full py-2 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white text-xs font-bold rounded-lg shadow-md hover:brightness-110">{t.unlockBtn}</button>
+                                </div>
                               )}
-                              <div className="absolute top-2.5 right-2.5 bg-emerald-700 text-white text-[8px] font-extrabold px-2 py-0.5 rounded shadow">Aadhaar Verified</div>
-                              <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">{t.id}: {profile.profileId || 'MMS-Temp'}</div>
-                            </div>
-
-                            <div className="p-4 space-y-3">
-                              <div className="flex justify-between items-center border-b pb-2">
-                                <h4 className="font-bold text-base text-[#7B1F1F]">{profile.firstName}</h4>
-                                <span className="text-[10px] font-extrabold text-[#7B1F1F] bg-[#7B1F1F]/5 border px-2 py-0.5 rounded max-w-[120px] truncate">{profile.caste}</span>
-                              </div>
-
-                              <div className="text-xs grid grid-cols-2 gap-y-2 text-gray-600 font-semibold">
-                                <p>🎂 {t.age}: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
-                                <p>📍 {t.district}: <span className="text-gray-900 font-bold">{profile.district?.split(' ')[0]}</span></p>
-                                <p>🌟 {t.star}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.nakshatra?.split(' ')[0]}</span></p>
-                                <p>🔮 {t.rasi}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.rasi?.split(' ')[0]}</span></p>
-                                <p className="col-span-2 text-[11px] border-t pt-1.5 text-gray-500">{t.education}: <span className="text-gray-900 font-bold">{profile.education}</span></p>
-                                <p className="col-span-2 text-[11px] text-gray-500">{t.income}: <span className="text-gray-900 font-bold">{profile.annualIncome}</span></p>
-                              </div>
                             </div>
                           </div>
-
-                          <div className="p-4 bg-[#FFFBF7] border-t border-gray-100 rounded-b-3xl">
-                            {myProfileData?.isPremium ? (
-                              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800 font-bold space-y-1">
-                                <p>📞 {t.phone}: {profile.phone || 'Protected'}</p>
-                                <p>📧 {t.email}: {profile.email || 'Protected'}</p>
-                                <p>🔱 {t.gothram}: <span className="text-gray-800 font-mono">{profile.gothram || 'Shiva'}</span></p>
-                                <p>🧬 {t.subCaste}: <span className="text-purple-900">{profile.subCaste || 'General'}</span></p>
-                              </div>
-                            ) : (
-                              <div className="text-center">
-                                <p className="text-[10px] text-amber-900 font-bold mb-2">{t.lockedWarning}</p>
-                                <button onClick={() => setActiveTab('payment')} className="w-full py-2 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white text-xs font-bold rounded-lg shadow-md hover:brightness-110">{t.unlockBtn}</button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                  }
                 </div>
               </div>
             )}
