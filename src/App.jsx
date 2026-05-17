@@ -5,23 +5,26 @@ import {
   User, MapPin, Award, FileText, Upload, LockKeyhole, Clock, ThumbsUp, Users, Image as ImageIcon, CheckCircle2, Sparkles
 } from 'lucide-react';
 
-// Live Full-Stack Firebase SDK Hook Links
-import { auth, db } from './firebase';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  onSnapshot, 
-  query, 
-  where 
-} from 'firebase/firestore';
+// Live Full-Stack Firebase Core Connectors
+import { initializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
+
+// 🔱 YOUR REAL CHIPPADA SAMBASIVA RAO DATABASE CONFIGURATION KEYS 🔱
+const firebaseConfig = {
+  apiKey: "AIzaSyANrr-2CJd4p7If61i7Z1u2dOJ3wTIRfJA",
+  authDomain: "mangalasutram-ca576.firebaseapp.com",
+  projectId: "mangalasutram-ca576",
+  storageBucket: "mangalasutram-ca576.firebasestorage.app",
+  messagingSenderId: "599413055123",
+  appId: "1:599413055123:web:23a58e34409fe66b523766",
+  measurementId: "G-0QETPPEFDF"
+};
+
+// Initialize Core Cloud Framework Natively
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 const INCOME_MAP = { '3-5 LPA': 1, '5-10 LPA': 2, '10-15 LPA': 3, '15-25 LPA': 4, '25-50 LPA': 5, '50+ LPA': 6 };
 const ASSET_MAP = { 'No Assets': 0, 'Below 50 Lakhs': 1, '50 Lakhs - 1 Crore': 2, '1 - 3 Crores': 3, '3 - 5 Crores': 4, '5 - 10 Crores': 5, '10 - 20 Crores': 6, '20 Crores+': 7 };
@@ -70,10 +73,8 @@ export default function App() {
   const [aadharInput, setAadharInput] = useState('');
   const [aadharAttached, setAadharAttached] = useState(false);
   const [screenshotAttached, setScreenshotAttached] = useState(false);
-  
-  // Permanent String Photo Registries State Hook Array
   const [formPhotos, setFormPhotos] = useState(['', '', '']);
-
+  
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
 
@@ -91,8 +92,13 @@ export default function App() {
     hobbies_text: ''
   });
 
-  const triggerToast = (msg) => setToastMessage(msg);
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(''), 4000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
+  // Real-time Cloud Synchronization Listener
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -138,13 +144,12 @@ export default function App() {
     setCurrentView('home');
   };
 
-  // Fix 2: Converts files into permanent Base64 text graphics strings for Firestore
   const handlePhotoSlotChange = (index, file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
       const updatedPhotos = [...formPhotos];
-      updatedPhotos[index] = reader.result; // Saves the stable data payload string cleanly
+      updatedPhotos[index] = reader.result; 
       setFormPhotos(updatedPhotos);
       triggerToast(`✓ Image Slot #${index + 1} synchronized to cloud stack.`);
     };
@@ -165,7 +170,6 @@ export default function App() {
     try {
       const credential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
       
-      // Fix 3: Fallback Smart Bio generator ensuring profile fullness
       let continuousBio = regForm.about.trim();
       if (!continuousBio) {
         continuousBio = `Cultured, family-oriented ${regForm.gender === 'Male' ? 'groom' : 'bride'} based in ${regForm.city}. Professionally working as a ${regForm.occupation} with a structural focus on maintaining balanced values, a ${regForm.devotional_status} lifestyle, and active family tradition lineages.`;
@@ -247,7 +251,6 @@ export default function App() {
     return currentUserData.gender === 'Male' ? 'Female' : 'Male';
   }, [currentUserData]);
 
-  // Dynamic Compatibility Match Score Calculator Matrix
   const calculateCompatibilityScore = (profile) => {
     if (!currentUserData) return 60;
     let baseScore = 65;
@@ -265,7 +268,6 @@ export default function App() {
       if (profile.gender !== computedTargetGender) return false;
       if (filterCity && !(profile.city || '').toLowerCase().includes(filterCity.toLowerCase())) return false;
 
-      // Fix 1: Automated Kuja Dosham matching validation override rules
       if (currentUserData.kujaDosham === 'Yes (ఉంది)' && profile.kujaDosham === 'No (లేదు)') return false;
 
       if (currentUserData.gothram && profile.gothram) {
@@ -298,9 +300,6 @@ export default function App() {
       return true;
     });
   }, [globalProfiles, currentUserData, computedTargetGender, filterCity, financialFilterActive, castePreferenceTier]);
-
-  const activeModalProfile = useMemo(() => globalProfiles.find(p => p.__docId === selectedProfileId), [globalProfiles, selectedProfileId]);
-  const modalHasAccess = currentUserData && activeModalProfile && (activeModalProfile.contact_purchases || '').split(',').includes(currentUserData.profile_id);
 
   if (loading) {
     return (
@@ -349,6 +348,7 @@ export default function App() {
               <div className="absolute inset-3 border border-[#d4a017]/20 rounded-2xl pointer-events-none"></div>
               <h1 className="text-5xl md:text-7xl font-bold text-[#FFF4D4]">పెళ్ళి పుస్తకం</h1>
               <p className="text-sm font-sans tracking-wide max-w-xl mx-auto text-gray-200 mt-2">Active live server sync running cross-country queries natively. Secure encrypted Telugu lineages.</p>
+              
               <div className="pt-6 flex justify-center gap-4 font-sans text-xs font-bold uppercase tracking-wider">
                 {userSession ? (
                   <button onClick={() => setCurrentView('search')} className="bg-[#d4a017] text-[#3a0a0a] px-6 py-3 rounded-xl shadow-md">Browse Alliances Matrix</button>
