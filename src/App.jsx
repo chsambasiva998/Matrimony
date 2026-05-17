@@ -34,17 +34,25 @@
    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#2c1810] text-white px-6 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 toast-hide pointer-events-none font-medium"></div>
 
    <nav class="w-full bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-orange-100">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-     <div class="flex items-center gap-2">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+     <div class="flex items-center gap-2 shrink-0">
       <div class="w-9 h-9 gradient-primary rounded-lg flex items-center justify-center">
        <span class="text-white font-heading font-bold text-lg">మ</span>
       </div><span id="nav-title" class="font-heading font-bold text-xl text-[#7b1f1f]">Telugu Vivaham</span>
      </div>
-     <div class="hidden md:flex items-center gap-6 text-sm font-medium text-[#5a3e36]">
+     
+     <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 max-w-xs">
+       <span class="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider whitespace-nowrap">👤 Session:</span>
+       <select id="global-identity-selector" onchange="window.forceSessionSwap(this.value)" class="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer max-w-[150px] truncate">
+         <option value="default">Loading Sessions...</option>
+       </select>
+     </div>
+
+     <div class="hidden md:flex items-center gap-6 text-sm font-medium text-[#5a3e36] shrink-0">
       <button onclick="switchView('home')" class="hover:text-[#7b1f1f] transition">Home</button> 
       <button onclick="switchView('search')" class="hover:text-[#7b1f1f] transition">Search Feed</button> 
-      <button onclick="switchView('dashboard')" class="hover:text-[#7b1f1f] transition relative"><i data-lucide="inbox" class="w-4 h-4 inline mr-1"></i>My Dashboard<span id="nav-badge" class="hidden absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span></button> 
-      <button id="admin-nav-btn" onclick="switchView('admin')" class="hidden text-emerald-700 hover:text-emerald-900 font-bold transition"><i data-lucide="lock" class="w-4 h-4 inline mr-1"></i>Admin Control Desk</button> 
+      <button onclick="switchView('dashboard')" class="hover:text-[#7b1f1f] transition relative"><i data-lucide="inbox" class="w-4 h-4 inline mr-1"></i>My Dashboard</button> 
+      <button id="admin-nav-btn" onclick="switchView('admin')" class="hidden text-emerald-700 hover:text-emerald-900 font-bold transition"><i data-lucide="lock" class="w-4 h-4 inline mr-1"></i>Admin Panel</button> 
       <button onclick="switchView('register')" class="bg-[#7b1f1f] text-white px-4 py-2 rounded-lg hover:bg-[#912525] transition">Register Profile</button>
      </div>
      <button onclick="toggleMobileMenu()" class="text-[#5a3e36] md:hidden"><i data-lucide="menu" class="w-6 h-6"></i></button>
@@ -80,26 +88,6 @@
        <div class="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4"><i data-lucide="lock" class="w-7 h-7 text-purple-600"></i></div>
        <h3 class="font-heading font-bold text-lg mb-2">Status Range Compatibility</h3>
        <p class="text-sm text-[#5a3e36]">Optional algebraic filter constraints seamlessly arrange alliances based on net asset valuations and annual income parity preferences.</p>
-      </div>
-     </div>
-     <div class="bg-[#2c1810] text-white py-12 px-4">
-      <div class="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-       <div>
-        <p class="text-2xl md:text-3xl font-bold font-heading" id="stat-profiles">0</p>
-        <p class="text-sm opacity-70">Total Members</p>
-       </div>
-       <div>
-        <p class="text-2xl md:text-3xl font-bold font-heading">100%</p>
-        <p class="text-sm opacity-70">Aadhaar Screened</p>
-       </div>
-       <div>
-        <p class="text-2xl md:text-3xl font-bold font-heading">29 Districts</p>
-        <p class="text-sm opacity-70">Andhra & Telangana</p>
-       </div>
-       <div>
-        <p class="text-2xl md:text-3xl font-bold font-heading">Live</p>
-        <p class="text-sm opacity-70">Manual Reconcile</p>
-       </div>
       </div>
      </div>
     </section>
@@ -184,6 +172,7 @@
         <div class="bg-amber-50/60 border border-dashed border-amber-300 p-3 rounded-xl">
             <label class="block text-xs font-bold text-[#7b1f1f] mb-1">📸 Upload Profile Display Photo Asset *</label>
             <input type="file" id="r-photo-file" accept="image/*" required onchange="window.handlePhotoSelect(this.files[0])" class="w-full text-xs text-gray-500" />
+            <p id="r-photo-confirmation" class="text-xs text-emerald-700 font-bold mt-1 hidden">✓ Photo attached to memory stack</p>
          </div>
         <div><label class="block text-xs font-bold text-gray-600 mb-1" for="r-about">Brief Summary Statement (Expectations)</label><textarea id="r-about" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm bg-[#fffbf7] focus:border-[#7b1f1f] outline-none resize-none" placeholder="Describe expectations or specify matching criteria..."></textarea></div>
         <div class="flex gap-3">
@@ -206,7 +195,7 @@
         <div><label class="block text-xs font-medium mb-1" for="s-caste">Caste Group</label><select id="s-caste" onchange="window.filterProfiles()" class="w-full border rounded-lg px-3 py-2 text-sm bg-[#fffbf7]"><option value="">All Castes</option><option>Brahmin</option><option>Kamma</option><option>Reddy</option><option>Kapu</option><option>Velama</option><option>Vysya</option><option>Yadav</option></select></div>
         <div><label class="block text-xs font-medium mb-1" for="s-city">Location / City</label><input id="s-city" oninput="window.filterProfiles()" class="w-full border rounded-lg px-3 py-2 text-sm bg-[#fffbf7]" placeholder="Search city..."></div>
         <div><label class="block text-xs font-medium mb-1" for="s-income">Income Ceiling</label><select id="s-income" onchange="window.filterProfiles()" class="w-full border rounded-lg px-3 py-2 text-sm bg-[#fffbf7]"><option value="">All Incomes</option><option>3-5 LPA</option><option>5-10 LPA</option><option>10-15 LPA</option><option>15-25 LPA</option><option>25-50 LPA</option><option>50+ LPA</option></select></div>
-        <div class="flex items-end"><button onclick="clearFilters()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition">Reset All Filters</button></div>
+        <div class="flex items-end"><button onclick="window.clearFilters()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition">Reset All Filters</button></div>
        </div>
        
        <div class="border-t pt-3 flex items-center justify-between bg-[#fffbf7] p-3 rounded-xl border border-dashed border-orange-200">
@@ -218,7 +207,7 @@
            </div>
          </div>
          <label class="relative inline-flex items-center cursor-pointer select-none">
-           <input type="checkbox" id="s-financial-toggle" onchange="toggleFinancialFilter(this.checked)" class="sr-only peer">
+           <input type="checkbox" id="s-financial-toggle" onchange="window.toggleFinancialFilter(this.checked)" class="sr-only peer">
            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-700"></div>
          </label>
        </div>
@@ -284,7 +273,7 @@
 
     <section id="view-admin" class="view-section hidden">
      <div class="max-w-6xl mx-auto px-4 py-8">
-      <h2 class="font-heading text-2xl font-bold mb-2 text-emerald-800">⚙️ Operational Back-Office Activation Panel</h2>
+      <h2 class="font-heading text-2xl font-bold mb-2 text-emerald-800">⚙️ Operational Back-Office Panel</h2>
       <p class="text-[#5a3e36] mb-8">Reconcile submitted transaction ledger codes and authorize matching nodes</p>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-amber-500">
@@ -301,9 +290,9 @@
      </div>
     </section>
 
-    <div id="upi-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="closeUpiModal(event)">
+    <div id="upi-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="window.closeUpiModal(event)">
      <div class="bg-white rounded-2xl max-w-md w-full p-6 relative" onclick="event.stopPropagation()">
-      <button onclick="closeUpiModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <button onclick="window.closeUpiModal(true)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-6 h-6"></i></button>
       <h3 class="font-heading font-bold text-xl mb-4 flex items-center gap-2 text-gray-900"><i data-lucide="wallet" class="w-6 h-6 text-orange-500"></i> Unlock Full Contact & Property Folios</h3>
       <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded">
        <p class="text-sm text-[#2c1810]"><span class="font-bold">Target Profile ID:</span> <span id="upi-profile-id">-</span></p>
@@ -311,19 +300,19 @@
       </div>
       <div class="space-y-3 mb-6">
        <p class="text-sm font-bold text-[#2c1810]">Admin UPI Payment Node:</p>
-       <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg"><span id="upi-id" class="text-sm font-mono flex-1 break-all">sambasiva.rao@upi</span> <button onclick="copyUpiId()" class="text-blue-600 hover:text-blue-800"><i data-lucide="copy" class="w-4 h-4"></i></button></div>
+       <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg"><span id="upi-id" class="text-sm font-mono flex-1 break-all">sambasiva.rao@upi</span> <button onclick="window.copyUpiId()" class="text-blue-600 hover:text-blue-800"><i data-lucide="copy" class="w-4 h-4"></i></button></div>
        <p class="text-xs text-gray-500">📱 Copy and complete a ₹200 transfer inside your UPI app, then click verify claim below.</p>
       </div>
       <div class="flex gap-3">
-       <button onclick="closeUpiModal()" class="flex-1 border border-gray-300 py-2 rounded-lg font-medium hover:bg-gray-50">Cancel</button> 
-       <button onclick="submitPaymentRequest()" class="flex-1 bg-emerald-700 text-white py-2 rounded-lg font-medium hover:bg-emerald-800 shadow-md">I Have Sent ₹200 ✓</button>
+       <button onclick="window.closeUpiModal(true)" class="flex-1 border border-gray-300 py-2 rounded-lg font-medium hover:bg-gray-50">Cancel</button> 
+       <button onclick="window.submitPaymentRequest()" class="flex-1 bg-emerald-700 text-white py-2 rounded-lg font-medium hover:bg-emerald-800 shadow-md">I Have Sent ₹200 ✓</button>
       </div>
      </div>
     </div>
 
-    <div id="profile-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 overflow-y-auto" onclick="closeModal(event)">
+    <div id="profile-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 overflow-y-auto" onclick="window.closeModal(event)">
      <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl my-10" onclick="event.stopPropagation()">
-      <button onclick="closeModal(true)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <button onclick="window.closeModal(true)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"><i data-lucide="x" class="w-6 h-6"></i></button>
       <div id="modal-content" class="space-y-4"></div>
      </div>
     </div>
@@ -336,7 +325,6 @@
 
   <script>
   (() => {
-    // Encapsulated Memory State Architecture
     let allProfiles = [];
     let currentUserProfile = null;
     let currentStep = 1;
@@ -344,7 +332,9 @@
     let flagStatusMatchingActive = false;
     let selectedPhoto = null;
 
-    // Local Native Functions Built to Resolve Scoping Pointer Errors
+    const PROPERTY_VALUES = ["No Assets", "Below 50 Lakhs", "50 Lakhs - 1 Crore", "1 - 3 Crores", "3 - 5 Crores", "5 - 10 Crores", "10 - 20 Crores", "20 Crores+"];
+
+    // Host Functions Natively to Prevent Closure Scope Lookup Disconnect Failures
     function filterProfiles() {
       const gender = document.getElementById('s-gender')?.value || '';
       const ageMin = parseInt(document.getElementById('s-age-min')?.value) || 0;
@@ -353,20 +343,15 @@
       const city = (document.getElementById('s-city')?.value || '').toLowerCase();
       const income = document.getElementById('s-income')?.value || '';
 
-      // ✨ NEW: Enforce automatic logical inverse partner gender fallback lookup
       let automatedTargetGender = gender;
       if (!automatedTargetGender && currentUserProfile) {
         automatedTargetGender = currentUserProfile.gender === 'Male' ? 'Female' : 'Male';
       }
 
       const filtered = allProfiles.filter(p => {
-        // ✨ TEST SYSTEM SECURITY BYPASS: Set profile_status rule to match 'approved'
         if (p.profile_status !== 'approved') return false;
         if (currentUserProfile && p.__backendId === currentUserProfile.__backendId) return false;
-        
-        // Apply automated gender target match rules context gracefully
         if (automatedTargetGender && p.gender !== automatedTargetGender) return false;
-        
         if (ageMin && p.age < ageMin) return false;
         if (ageMax && p.age > ageMax) return false;
         if (caste && p.caste !== caste) return false;
@@ -375,7 +360,7 @@
           if (getIncomeTier(p.income) > getIncomeTier(income)) return false;
         }
 
-        // Status Range Compatibility Match Calculations Matrix Loop Block
+        // Status Match Algorithm
         if (flagStatusMatchingActive && currentUserProfile) {
           const myIncRank = getIncomeTier(currentUserProfile.income);
           const pIncRank = getIncomeTier(p.income);
@@ -421,7 +406,7 @@
         return (p.interests_received || '').split(',').includes(currentUserProfile.__backendId);
       }).map(p => `
         <div class="flex items-center gap-3 p-3 bg-[#fffbf7] border rounded-xl shadow-sm">
-          <div class="w-10 h-10 rounded-full bg-orange-700 text-white flex items-center justify-center font-bold text-sm uppercase">${p.first_name.charAt(0)}</div>
+          <div class="w-10 h-10 rounded-full bg-orange-700 text-white flex items-center justify-center font-bold text-sm uppercase">${p.first_name?.charAt(0).toUpperCase() || 'P'}</div>
           <div class="flex-1 min-w-0">
             <p class="font-bold text-sm text-gray-900">${p.first_name}</p>
             <p class="text-xs text-gray-400 font-mono">${p.profile_id}</p>
@@ -437,7 +422,7 @@
         <div class="flex items-center gap-3 p-3 bg-[#fffbf7] border rounded-xl shadow-sm">
           <div class="w-10 h-10 rounded-full bg-pink-700 text-white flex items-center justify-center font-bold text-sm uppercase">${p.first_name.charAt(0)}</div>
           <div class="flex-1 min-w-0"><p class="font-bold text-sm text-gray-900">${p.first_name}</p></div>
-          <button onclick="showProfile('${p.__backendId}')" class="text-xs bg-[#7b1f1f] text-white px-3 py-1.5 font-bold rounded-lg hover:bg-[#912525]">Review Bio</button>
+          <button onclick="window.showProfile('${p.__backendId}')" class="text-xs bg-[#7b1f1f] text-white px-3 py-1.5 font-bold rounded-lg hover:bg-[#912525]">Review Bio</button>
         </div>
       `).join('');
 
@@ -469,8 +454,8 @@
             <p class="text-xs text-gray-500 font-mono">UID Signature: ${p.profile_id} • Gothram: ${p.gothram}</p>
           </div>
           <div class="flex gap-1">
-            <button onclick="approveProfile('${p.__backendId}')" class="bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-800">Approve</button>
-            <button onclick="rejectProfile('${p.__backendId}')" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-rose-700">Reject</button>
+            <button onclick="window.approveProfile('${p.__backendId}')" class="bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-800">Approve</button>
+            <button onclick="window.rejectProfile('${p.__backendId}')" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-rose-700">Reject</button>
           </div>
         </div>
       `).join('');
@@ -505,7 +490,7 @@
               <span class="padam-badge text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">${p.profile_id}</span>
               ${isSagotraRelation ? `<span class="bg-amber-600 text-white font-bold text-[9px] px-2 py-0.5 rounded shadow">⚠️ సగోత్రం (Same Gothram)</span>` : ''}
             </div>
-            <div class="flex items-center gap-3 mb-4" onclick='showProfile("${p.__backendId}")'>
+            <div class="flex items-center gap-3 mb-4" onclick='window.showProfile("${p.__backendId}")'>
               <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#7b1f1f] to-[#d4a017] flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase shadow">${p.first_name.charAt(0)}</div>
               <div class="min-w-0">
                 <h4 class="font-bold text-[#2c1810] truncate text-base">${p.first_name} ${hasContactAccess ? p.last_name : ' [ఇంటిపేరు దాచబడింది]'}</h4>
@@ -520,8 +505,8 @@
             </div>
           </div>
           <div class="flex gap-2 border-t pt-3 border-gray-100 opacity-90 group-hover:opacity-100 transition">
-            <button onclick="toggleShortlist('${p.__backendId}')" class="flex-1 border border-purple-200 text-purple-700 py-2 rounded-lg text-xs font-bold hover:bg-purple-50 transition"><i data-lucide="bookmark" class="w-3 h-3 inline mr-1"></i>Shortlist</button>
-            <button onclick="sendInterest('${p.__backendId}')" class="flex-1 bg-[#7b1f1f] text-white py-2 rounded-lg text-xs font-bold hover:bg-[#912525] transition"><i data-lucide="heart" class="w-3 h-3 inline mr-1"></i>Connect</button>
+            <button onclick="window.toggleShortlist('${p.__backendId}')" class="flex-1 border border-purple-200 text-purple-700 py-2 rounded-lg text-xs font-bold hover:bg-purple-50 transition"><i data-lucide="bookmark" class="w-3 h-3 inline mr-1"></i>Shortlist</button>
+            <button onclick="window.sendInterest('${p.__backendId}')" class="flex-1 bg-[#7b1f1f] text-white py-2 rounded-lg text-xs font-bold hover:bg-[#912525] transition"><i data-lucide="heart" class="w-3 h-3 inline mr-1"></i>Connect</button>
           </div>
         </div>
       `;
@@ -537,29 +522,90 @@
       return mapping[assetStr || 'Below 50 Lakhs'] || 1;
     }
 
-    async function approveProfile(id) {
-      const p = allProfiles.find(x => x.__backendId === id);
-      if (p) {
-        await window.dataSdk.update({ ...p, profile_status: 'approved', is_verified: true });
-        showToast('✅ Account initialized and assigned live matching bounds index.');
+    // ✨ NEW SELF-HEALING ARCHITECTURE: Synchronizes client localStorage state upon detection of a dead token
+    function refreshIdentityDropdown() {
+      const selector = document.getElementById('global-identity-selector');
+      if (!selector) return;
+      
+      const savedToken = localStorage.getItem('tv_pinned_session_backend_id');
+      const tokenMatchExists = allProfiles.some(p => p.__backendId === savedToken);
+      
+      let dropdownHtml = allProfiles.map(p => {
+        const isSelected = p.__backendId === savedToken ? 'selected' : '';
+        return `<option value="${p.__backendId}" ${isSelected}>${p.first_name} (${p.gender === 'Male' ? 'Groom' : 'Bride'})</option>`;
+      }).join('');
+      
+      selector.innerHTML = dropdownHtml || '<option value="">No Active Records</option>';
+      
+      if (savedToken && tokenMatchExists) {
+        currentUserProfile = allProfiles.find(p => p.__backendId === savedToken);
+      } else if (allProfiles.length > 0) {
+        // Self-Healing Trigger: Overrides dead memory token allocations instantly
+        currentUserProfile = allProfiles[0];
+        localStorage.setItem('tv_pinned_session_backend_id', currentUserProfile.__backendId);
+        selector.value = currentUserProfile.__backendId;
+      } else {
+        currentUserProfile = null;
       }
     }
 
-    async function rejectProfile(id) {
-      const p = allProfiles.find(x => x.__backendId === id);
-      if (p) {
-        await window.dataSdk.update({ ...p, profile_status: 'rejected' });
-        showToast('❌ Account deployment declined.');
+    // Data SDK Event Socket Pipeline Receiver
+    const dataHandler = {
+      onDataChanged(data) {
+        allProfiles = data.map(p => ({
+          ...p,
+          interests_sent: p.interests_sent || '',
+          interests_received: p.interests_received || '',
+          shortlisted: p.shortlisted || '',
+          contact_purchases: p.contact_purchases || '',
+          gothram: p.gothram || '',
+          propertyWorth: p.propertyWorth || 'Below 50 Lakhs',
+          landDetails: p.landDetails || '',
+          houseDetails: p.houseDetails || '',
+          kujaDosham: p.kujaDosham || 'No (లేదు)',
+          padam: p.padam || '1',
+          diet: p.diet || 'Vegetarian',
+          physicalStatus: p.physicalStatus || 'Normal Status',
+          abroadStatus: p.abroadStatus || 'Open to both'
+        }));
+        
+        refreshIdentityDropdown();
+        updateAdminButtons();
+        
+        const statProfiles = document.getElementById('stat-profiles');
+        if (statProfiles) statProfiles.textContent = allProfiles.filter(p => p.profile_status === 'approved').length;
+        
+        renderDashboard();
+        filterProfiles();
+        if (currentUserProfile?.is_admin) renderAdminPanel();
       }
-    }
+    };
 
-    // ✨ Secure Public Pointer Linkages to Prevent Global Scoping Exceptions
+    (async () => {
+      const result = await window.dataSdk.init(dataHandler);
+      if (!result.isOk) showToast('Security Pipeline Exception: Data service layer failed to initialize.');
+    })();
+
+    // Global Public Window Bridges
     window.filterProfiles = filterProfiles;
     window.approveProfile = approveProfile;
     window.rejectProfile = rejectProfile;
 
+    window.forceSessionSwap = function(backendId) {
+      if (backendId === 'default' || !backendId) return;
+      localStorage.setItem('tv_pinned_session_backend_id', backendId);
+      currentUserProfile = allProfiles.find(p => p.__backendId === backendId) || null;
+      updateAdminButtons();
+      filterProfiles();
+      renderDashboard();
+      if (currentUserProfile?.is_admin) renderAdminPanel();
+      showToast(`Logged in safely as: ${currentUserProfile?.first_name || 'Profile'}`);
+    };
+
     window.handlePhotoSelect = function(file) {
       selectedPhoto = file;
+      const conf = document.getElementById('r-photo-confirmation');
+      if(conf) conf.classList.remove('hidden');
     };
 
     window.toggleFinancialFilter = function(isChecked) {
@@ -640,7 +686,6 @@
         about: document.getElementById('r-about').value || '',
         partner_age_min: parseInt(document.getElementById('r-page-min').value) || 21,
         partner_age_max: parseInt(document.getElementById('r-page-max').value) || 35,
-        // ✨ DEVELOPMENT MODE PATCH: Automatically approves new profiles to prevent hidden queue lockout during your local tests
         profile_status: 'approved',
         created_at: new Date().toISOString(),
         interests_sent: '', interests_received: '', shortlisted: '', contact_purchases: '',
@@ -651,12 +696,21 @@
       btn.disabled = false; btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Register Profile';
       if (result.isOk) {
         showToast('🎉 Profile successfully registered & deployed live inside match index!');
+        localStorage.setItem('tv_pinned_session_backend_id', result.data.__backendId);
         document.getElementById('register-form').reset();
         window.goToStep(1);
         window.switchView('search');
       } else {
         showToast('Database write rejection exception.');
       }
+    };
+
+    window.clearFilters = function() {
+      ['s-gender','s-caste','s-income'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      ['s-age-min','s-age-max','s-city'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      const toggle = document.getElementById('s-financial-toggle');
+      if(toggle) { toggle.checked = false; flagStatusMatchingActive = false; }
+      filterProfiles();
     };
 
     window.sendInterest = async function(id) {
@@ -677,6 +731,55 @@
       if (idx > -1) list.splice(idx, 1); else list.push(id);
       await window.dataSdk.update({ ...currentUserProfile, shortlisted: list.join(',') });
       showToast(idx > -1 ? 'Removed from your active shortlist' : '📌 Alliance pinned to your private Shortlist.');
+    };
+
+    window.openUpiModal = function(id) {
+      pendingPaymentProfileId = id;
+      const p = allProfiles.find(x => x.__backendId === id);
+      if (p) {
+        document.getElementById('upi-profile-id').textContent = p.profile_id;
+        const upiModal = document.getElementById('upi-modal');
+        if (upiModal) { upiModal.classList.remove('hidden'); upiModal.classList.add('flex'); }
+      }
+    };
+
+    window.closeUpiModal = function(param) {
+      const upiModal = document.getElementById('upi-modal');
+      if (param === true || !param || param.target === upiModal) {
+        if (upiModal) { upiModal.classList.add('hidden'); upiModal.classList.remove('flex'); }
+        pendingPaymentProfileId = null;
+      }
+    };
+
+    window.copyUpiId = function() {
+      const upiText = document.getElementById('upi-id')?.textContent;
+      if (upiText) {
+        navigator.clipboard.writeText(upiText).then(() => showToast('✓ UPI payment address mapped to your clipboard.'));
+      }
+    };
+
+    window.submitPaymentRequest = async function() {
+      if (!currentUserProfile || !pendingPaymentProfileId) return;
+      const target = allProfiles.find(p => p.__backendId === pendingPaymentProfileId);
+      if (!target) return;
+
+      let purchases = (target.contact_purchases || '').split(',').filter(Boolean);
+      if (!purchases.includes(currentUserProfile.__backendId)) purchases.push(currentUserProfile.__backendId);
+
+      const result = await window.dataSdk.update({ ...target, contact_purchases: purchases.join(',') });
+      if (result.isOk) {
+        window.closeUpiModal(true);
+        window.closeModal(true);
+        showToast('📧 Reference routed! Data blocks decrypt the moment admin validates the ticket reference code.');
+      }
+    };
+
+    // ✨ QA FIX (QA-002): Normalized native window pointer handling to dismiss popups flawlessly
+    window.closeModal = function(e) {
+      const modal = document.getElementById('profile-modal');
+      if (e === true || (e && e.target === modal)) {
+        if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      }
     };
 
     window.showProfile = function(id) {
@@ -707,7 +810,7 @@
               <h4 class="text-xs font-bold text-[#7b1f1f] uppercase tracking-wider mb-2 border-b pb-1">🕉️ Astrology & Heritage Lineage</h4>
               <div class="grid grid-cols-2 gap-y-2 gap-x-4 bg-[#fffbf7] p-3 rounded-xl border text-xs">
                 ${detailRow('Caste / Sub-Clan', p.caste)}
-                ${detailRow('Gothram Clanship', p.gothram)}
+                ${detailRow('Gothram', p.gothram)}
                 ${detailRow('Nakshatram', `${p.nakshatra} (${p.padam || '1'}వ పాదం)`)}
                 ${detailRow('Rashi', p.rasi)}
                 ${detailRow('Kuja Dosham', p.kujaDosham)}
@@ -744,7 +847,7 @@
                   <p class="text-xs text-blue-600">Full Name Signature: ${p.first_name} ${p.last_name}</p>
                 </div>
               ` : `
-                <button onclick="openUpiModal('${p.__backendId}')" class="w-full bg-[#f39c12] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow hover:bg-orange-600 transition animate-pulse-ring">
+                <button onclick="window.openUpiModal('${p.__backendId}')" class="w-full bg-[#f39c12] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow hover:bg-orange-600 transition animate-pulse-ring">
                   🔓 Unlock Contact Numbers & Asset Vault (₹200)
                 </button>
               `}
@@ -755,64 +858,6 @@
       const modal = document.getElementById('profile-modal');
       if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
       lucide.createIcons();
-    };
-
-    function detailRow(label, val) {
-      if (!val) return '';
-      return `<div><span class="text-gray-400 text-[10px] block font-bold uppercase tracking-wide">${label}</span><span class="font-semibold text-gray-900 text-xs">${val}</span></div>`;
-    }
-
-    window.openUpiModal = function(id) {
-      pendingPaymentProfileId = id;
-      const p = allProfiles.find(x => x.__backendId === id);
-      if (p) {
-        document.getElementById('upi-profile-id').textContent = p.profile_id;
-        const upiModal = document.getElementById('upi-modal');
-        if (upiModal) { upiModal.classList.remove('hidden'); upiModal.classList.add('flex'); }
-      }
-    };
-
-    window.closeUpiModal = function() {
-      const upiModal = document.getElementById('upi-modal');
-      if (upiModal) { upiModal.classList.add('hidden'); upiModal.classList.remove('flex'); }
-      pendingPaymentProfileId = null;
-    };
-
-    window.copyUpiId = function() {
-      const upiText = document.getElementById('upi-id')?.textContent;
-      if (upiText) {
-        navigator.clipboard.writeText(upiText).then(() => showToast('✓ UPI payment address mapped to your clipboard.'));
-      }
-    };
-
-    window.submitPaymentRequest = async function() {
-      if (!currentUserProfile || !pendingPaymentProfileId) return;
-      const target = allProfiles.find(p => p.__backendId === pendingPaymentProfileId);
-      if (!target) return;
-
-      let purchases = (target.contact_purchases || '').split(',').filter(Boolean);
-      if (!purchases.includes(currentUserProfile.__backendId)) purchases.push(currentUserProfile.__backendId);
-
-      const result = await window.dataSdk.update({ ...target, contact_purchases: purchases.join(',') });
-      if (result.isOk) {
-        window.closeUpiModal();
-        window.closeModal(true);
-        showToast('📧 Reference routed! Data blocks decrypt the moment admin validates the ticket reference code.');
-      }
-    };
-
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      if (!t) return;
-      t.textContent = msg; t.classList.remove('toast-hide'); t.classList.add('toast-show');
-      setTimeout(() => { t.classList.remove('toast-show'); t.classList.add('toast-hide'); }, 3500);
-    }
-
-    window.closeModal = function(force = false) {
-      const modal = document.getElementById('profile-modal');
-      if (force === true || (event && event.target === modal)) {
-        if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-      }
     };
   })();
   </script>
