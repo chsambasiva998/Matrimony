@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from './firebase';
-import { collection, addDoc, doc, updateDoc, query, onSnapshot, where } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, onSnapshot, where, orderBy, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // 📍 DISTRICTS MATRIX
@@ -53,8 +53,8 @@ const TRANSLATIONS = {
   te: {
     logoTitle: "మంగళసూత్రం వివాహ వేదిక", logoSub: "నమ్మకమైన సంబంధాల కేంద్రం",
     exploreMatches: "వరుస సంబంధాలు", myBio: "నా ప్రొఫైల్ వివరాలు", goPremium: "👑 ప్రీమియం సభ్యత్వం",
-    namaskaram: "🙏 నమస్కారం", premiumActive: "👑 ప్రీమియం సక్రియం చేయబడింది", logout: "లాగౌట్",
-    registerTitle: "📝 కొత్త ప్రొఫైల్ నమోదు చేసుకోండి", loginTitle: "🔐 సభ్యుల లాగిన్",
+    namaskaram: "🙏 నమస్కారం", premiumActive: "👑 ప్రీమియం సక్రియం", logout: "లాగౌట్",
+    registerTitle: "📝 కొత్త ప్రొఫైల్ నమోదు", loginTitle: "🔐 సభ్యుల లాగిన్",
     switchLogin: "ఇప్పటికే ఖాతా ఉందా? లాగిన్ అవ్వండి", switchReg: "ఖాతా లేదా? ఇప్పుడే నమోదు చేసుకోండి",
     firstName: "అభ్యర్థి పేరు", lastName: "ఇంటి పేరు", age: "వయస్సు", gender: "లింగము",
     bride: "వధువు (Female)", groom: "వరుడు (Male)", maritalStatus: "వివాహ స్థితి",
@@ -64,42 +64,42 @@ const TRANSLATIONS = {
     phone: "మొబైల్ నెంబర్", photoUpload: "📸 ప్రొఫైల్ ఫోటో (సెలెక్ట్ చేయండి)",
     aadhaarLabel: "🛡️ ఆధార్ కార్డ్ ద్వారా ధృవీకరణ", verifyBtn: "ధృవీకరించు", verifiedBtn: "✅ పూర్తయింది",
     email: "ఈమెయిల్ ఐడి", password: "పాస్‌వర్డ్ సెట్ చేయండి", submitReg: "🪷 ప్రొఫైల్‌ను ప్రచురించు",
-    submitLogin: "🔐 లాగిన్ అవ్వండి", fastFilter: "⚡ ప్రొఫైల్ ఫిల్టర్లు:", id: "ప్రొఫైల్ ఐడి",
-    lockedCoords: "🔒 సంప్రదింపు వివరాలు", unlockBtn: "ఫోన్ నెంబర్ చూడండి",
+    submitLogin: "🔐 లాగిన్ అవ్వండి", fastFilter: "⚡ వడపోత:", id: "ప్రొఫైల్ ఐడి",
+    lockedCoords: "🔒 సంప్రదింపు వివరాలు", unlockBtn: "వివరాలు చూడండి",
     starPrefLabel: "🔮 మీకు సమ్మతమైన నక్షత్రములు (మల్టిపుల్ సెలెక్ట్):", starPrefSub: "మీ జాతక పొంతన ప్రకారం ఇష్టమైన నక్షత్రాలను టిక్ చేయండి.",
-    step1: "👉 స్టెప్ 1: కింది UPI QR కోడ్‌కు ₹499 చెల్లించండి", step2: "👉 స్టెప్ 2: చెల్లింపు రుజువును ఇక్కడ నమోదు చేయండి",
-    pasteUtr: "12-అంకెల UPI UTR ఐడి ఇక్కడ పేస్ట్ చేయండి", filePremium: "ప్రీమియం అభ్యర్థనను పంపండి",
-    pendingClaim: "📑 మీ వివరాలు అడ్మిన్ పరిశీలనలో ఉన్నాయి. 15 నిమిషాల్లో అన్‌లాక్ చేయబడుతుంది.",
+    step1: "👉 స్టెప్ 1: కింది UPI QR కోడ్‌కు చెల్లించండి", step2: "👉 స్టెప్ 2: చెల్లింపు రుజువును ఇక్కడ నమోదు చేయండి",
+    pasteUtr: "12-అంకెల UPI UTR ఐడి పేస్ట్ చేయండి", filePremium: "ప్రీమియం అభ్యర్థన పంపండి",
+    pendingClaim: "📑 వివరాలు అడ్మిన్ పరిశీలనలో ఉన్నాయి. 15 నిమిషాల్లో అన్‌లాక్ చేయబడుతుంది.",
     noMatches: "క్షమించండి, మీరు ఎంచుకున్న ఫిల్టర్లకు సరిపోయే సంబంధాలు ఇంకా నమోదు కాలేదు.",
     lockedWarning: "భద్రతా కారణాల దృష్ట్యా ఫోన్ నెంబర్ దాచబడింది. అన్‌లాక్ చేయడానికి కింది బటన్ నొక్కండి."
   },
   en: {
-    logoTitle: "Mangalasutram Matrimony", logoSub: "Trusted Telugu Matchmaking Engine",
+    logoTitle: "Mangalasutram Matrimony", logoSub: "Trusted Telugu Matchmaking",
     exploreMatches: "Explore Matches", myBio: "My Bio-Data Settings", goPremium: "👑 Go Premium",
-    namaskaram: "🙏 Welcome", premiumActive: "👑 Premium Status Active", logout: "Logout",
-    registerTitle: "📝 Register Verified Profile", loginTitle: "🔐 Secure Gateway Login",
+    namaskaram: "🙏 Welcome", premiumActive: "👑 Premium Active", logout: "Logout",
+    registerTitle: "📝 Register Verified Profile", loginTitle: "🔐 Secure Login",
     switchLogin: "Already a member? Login", switchReg: "New here? Register Free",
     firstName: "Candidate Name", lastName: "Surname", age: "Age", gender: "Gender",
     bride: "Bride (Female)", groom: "Groom (Male)", maritalStatus: "Marital Status",
     neverMarried: "Never Married", divorced: "Divorced", widowed: "Widowed",
-    district: "Hometown District", caste: "Caste Community", subCaste: "Sub-Caste Clan",
+    district: "Hometown District", caste: "Caste", subCaste: "Sub-Caste",
     gothram: "Gothram", rasi: "Rasi / Moon Sign", star: "Janma Nakshatram",
-    education: "Educational Qualification", income: "Annual Income Segment",
-    phone: "Contact Mobile Number", photoUpload: "📸 Attach Primary Display Photo",
-    aadhaarLabel: "🛡️ Secure Identity Verification (Aadhaar)", verifyBtn: "Verify Identity", verifiedBtn: "✅ Cleared",
-    email: "Account Email", password: "Secure Password", submitReg: "🪷 Deploy Profile",
+    education: "Education", income: "Annual Income",
+    phone: "Mobile Number", photoUpload: "📸 Attach Primary Photo",
+    aadhaarLabel: "🛡️ Identity Verification (Aadhaar)", verifyBtn: "Verify", verifiedBtn: "✅ Cleared",
+    email: "Email", password: "Password", submitReg: "🪷 Deploy Profile",
     submitLogin: "🔐 Connect Session", fastFilter: "⚡ Refine Feed:", id: "UID",
-    lockedCoords: "🔒 Encrypted Contact Info", unlockBtn: "Unlock Direct Contact Details",
-    starPrefLabel: "🔮 Multi-Select Compatible Match Stars:", starPrefSub: "Check matching clusters recommended by your astrologer.",
-    step1: "👉 Step 1: Complete ₹499 UPI Scan Deposit", step2: "👉 Step 2: Log Transaction Verification Ticket",
-    pasteUtr: "Input 12-Digit UPI Reference Number (UTR)", filePremium: "Submit Activation Slip",
-    pendingClaim: "📑 Reference submitted! Ledger reconcile completes in 15 mins to grant access.",
-    noMatches: "No matching registered nodes found within chosen filter variables.",
-    lockedWarning: "Contact variables encrypted to shield privacy. Upgrade to clear encryption."
+    lockedCoords: "🔒 Encrypted Info", unlockBtn: "Unlock Contact Details",
+    starPrefLabel: "🔮 Multi-Select Match Stars:", starPrefSub: "Check compatible clusters.",
+    step1: "👉 Step 1: Complete ₹499 UPI Deposit", step2: "👉 Step 2: Log Verification Ticket",
+    pasteUtr: "Input 12-Digit UPI UTR", filePremium: "Submit Activation Slip",
+    pendingClaim: "📑 Reference submitted! Ledger reconcile completes in 15 mins.",
+    noMatches: "No matching profiles found within chosen filter variables.",
+    lockedWarning: "Contact variables encrypted. Upgrade to clear encryption."
   }
 };
 
-// 🛠️ COMPRESSOR
+// 🛠️ BUG FIX 3: SMART IMAGE COMPRESSOR WITH WHITE BACKGROUND FILL FOR PNGs
 const compressImage = (file) => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -114,6 +114,9 @@ const compressImage = (file) => {
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
         const ctx = canvas.getContext('2d');
+        // Fill white background to prevent PNG transparency from turning black
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', 0.7)); 
       };
@@ -179,7 +182,8 @@ export default function App() {
   }, [user, isProfileLoaded]);
 
   useEffect(() => {
-    return onSnapshot(query(collection(db, "profiles")), (snapshot) => {
+    const q = query(collection(db, "profiles"), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snapshot) => {
       const liveList = [];
       snapshot.forEach((doc) => liveList.push({ id: doc.id, ...doc.data() }));
       setProfiles(liveList);
@@ -196,7 +200,7 @@ export default function App() {
 
   const executeAadhaarShield = () => {
     if (aadhaarNumber.length !== 12 || isNaN(aadhaarNumber)) {
-      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ 12 అంకెలు ఉండాలి!' : '❌ Invalid 12-Digit Aadhaar format.');
+      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ 12 అంకెలు ఉండాలి!' : '❌ Invalid 12-Digit Aadhaar.');
       return;
     }
     setAadhaarStatus('VERIFYING');
@@ -217,19 +221,24 @@ export default function App() {
     setIsSubmitting(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, formData.email, authPassword);
+      // 🛠️ BUG FIX 1: HEAVY COMPRESSION FIRST TO PREVENT "GHOST USERS" ON TIMEOUT
       const base64Encodings = [];
       for (let i = 0; i < selectedPhotos.length; i++) {
         const compressedData = await compressImage(selectedPhotos[i]);
         base64Encodings.push(compressedData);
       }
+      
+      // ONLY CREATE AUTH AFTER ASSETS ARE SECURED
+      await createUserWithEmailAndPassword(auth, formData.email, authPassword);
+      
       const generatedProfileId = "MMS" + Math.floor(100000 + Math.random() * 900000);
       await addDoc(collection(db, "profiles"), {
         ...formData,
         profileId: generatedProfileId,
         photos: base64Encodings,
         isPremium: false,
-        aadhaarVerified: true
+        aadhaarVerified: true,
+        createdAt: serverTimestamp() 
       });
       alert(lang === 'te' ? `🎉 ఐడి: ${generatedProfileId}` : `🎉 Profile deployed: ${generatedProfileId}`);
     } catch (err) {
@@ -572,7 +581,7 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: MANAGEMENT PORTAL */}
+            {/* 🛠️ BUG FIX 2: MISSING EDIT FIELDS RESTORED */}
             {activeTab === 'my-profile' && (
               <div className="max-w-3xl mx-auto bg-white border border-[#E8C99A] p-6 rounded-3xl shadow-lg">
                 <div className="border-b pb-2 mb-6">
@@ -621,7 +630,53 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* MULTI-SELECT PREFERENCE MATRIX */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.caste}</label>
+                      <select value={formData.caste} onChange={e => {
+                        const selectedCaste = e.target.value;
+                        setFormData({...formData, caste: selectedCaste, subCaste: CASTE_MATRIX[selectedCaste]?.[0] || 'General'});
+                      }} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                        {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.subCaste}</label>
+                      <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                        {CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.district}</label>
+                      <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                        {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.phone}</label>
+                      <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.education}</label>
+                      <input type="text" required value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.income}</label>
+                      <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                        <option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option>
+                        <option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option>
+                        <option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option>
+                        <option value="20+ Lakhs PA">20+ Lakhs PA</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="bg-[#FFFBF7] border border-[#E8C99A] p-4 rounded-2xl">
                     <label className="block text-xs font-extrabold text-[#7B1F1F] uppercase mb-1">{t.starPrefLabel}</label>
                     <p className="text-[11px] text-gray-500 mb-4">{t.starPrefSub}</p>
