@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from './firebase';
-// ✨ Added arrayUnion to handle appending profile IDs to interaction lists
-import { collection, addDoc, doc, updateDoc, query, onSnapshot, where, orderBy, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, onSnapshot, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // 📍 DISTRICTS MATRIX
@@ -12,7 +11,7 @@ const DISTRICTS = [
   'Nandyal (నంద్యాల)', 'NTR Vijayawada (ఎన్టీఆర్ విజయవాడ)', 'Palnadu (పల్నాడు)', 
   'Parvathipuram Manyam (పార్వతీపురం మన్యం)', 'Prakasam (ప్రకాశం)', 'Sri Potti Sriramulu Nellore (నెల్లూరు)', 
   'Sri Sathya Sai (శ్రీ సత్యసాయి)', 'Srikakulam (శ్రీకాకుళం)', 'Tirupati (తిరుపతి)', 
-  'Visakhapatnam (విశాఖపట్నం)', 'Vizianagaram (విజయనగరం)', 'West Godavari (పశ్చిమ గోదావరి)', 
+  'Visakhapatnam (విశాఖపట్నం)', 'Vizianగరం (విజయనగరం)', 'West Godavari (పశ్చిమ గోదావరి)', 
   'YSR Kadapa (వైఎస్ఆర్ కడప)', 'Warangal (వరంగల్)', 'Khammam (ఖమ్మం)', 'Nalgonda (నల్గొండ)'
 ].sort();
 
@@ -26,7 +25,7 @@ const CASTE_MATRIX = {
   "Padmashali / Devanga (పద్మశాలి)": ["Padmashali", "Devanga", "Togata", "Pattu Sali", "Other"],
   "Yadava / Golla (యాదవ)": ["Golla", "Pooja Golla", "Yadav", "Other"],
   "Viswabrahmin (విశ్వబ్రాహ్మణ)": ["Kamsali", "Kammari", "Silpi", "Vadrangi", "Ausula"],
-  "Goud (గౌడ్)": ["Ediga", "Settibalija", "Gamalla", "Goud"],
+  "Goud (गौड)": ["Ediga", "Settibalija", "Gamalla", "Goud"],
   "Mudiraj (ముదిరాజ్)": ["Mudiraju", "Mutrasi"],
   "Mala (మాల)": ["Netkani", "Paki", "Mala Dasari", "General Mala"],
   "Madiga (మాదిగ)": ["Chamar", "Madiga Dasari", "General Madiga"],
@@ -49,7 +48,9 @@ const NAKSHATRAMS = [
   'Satabhisha (శతభిషం)', 'Purva Bhadrapada (పూర్వాభాద్ర)', 'Uttara Bhadrapada (ఉత్తరాభాద్ర)', 'Revati (రేవతి)'
 ];
 
-// 📊 TRANSLATIONS (Updated with authentic Matrimony Terminology)
+const HEIGHTS = ["4'0\"", "4'1\"", "4'2\"", "4'3\"", "4'4\"", "4'5\"", "4'6\"", "4'7\"", "4'8\"", "4'9\"", "4'10\"", "4'11\"", "5'0\"", "5'1\"", "5'2\"", "5'3\"", "5'4\"", "5'5\"", "5'6\"", "5'7\"", "5'8\"", "5'9\"", "5'10\"", "5'11\"", "6'0\"", "6'1\"", "6'2\"", "6'3\"", "6'4\"", "6'5\"+"];
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Don't Know"];
+
 const TRANSLATIONS = {
   te: {
     logoTitle: "మంగళసూత్రం వివాహ వేదిక", logoSub: "నమ్మకమైన సంబంధాల కేంద్రం",
@@ -57,27 +58,28 @@ const TRANSLATIONS = {
     namaskaram: "🙏 నమస్కారం", premiumActive: "👑 ప్రీమియం సక్రియం", logout: "లాగౌట్",
     registerTitle: "📝 కొత్త ప్రొఫైల్ నమోదు", loginTitle: "🔐 సభ్యుల లాగిన్",
     switchLogin: "ఇప్పటికే ఖాతా ఉందా? లాగిన్ అవ్వండి", switchReg: "ఖాతా లేదా? ఇప్పుడే నమోదు చేసుకోండి",
-    firstName: "అభ్యర్థి పేరు", lastName: "ఇంటి పేరు", age: "వయస్సు", gender: "లింగము",
+    firstName: "అభ్యర్థి పేరు", lastName: "ఇంటి పేరు", age: "వయస్సు", gender: "లింగము", height: "ఎత్తు", bloodGroup: "రక్త వర్గం",
     bride: "వధువు (Female)", groom: "వరుడు (Male)", maritalStatus: "వివాహ స్థితి",
-    neverMarried: "అపరిణీత", divorced: "విడాకులు తీసుకున్న", widowed: "సహచరుడు కోల్పోయిన",
+    neverMarried: "అపరిణీత (Never Married)", divorced: "విడాకులు తీసుకున్న (Divorced)", widowed: "సహచరుడు కోల్పోయిన (Widowed)",
     district: "నివాస జిల్లా", caste: "కులం", subCaste: "ఉప కులం", gothram: "గోత్రం",
-    rasi: "రాశి", star: "జన్మ నక్షత్రం", education: "విద్యార్హత", income: "సంవత్సర ఆదాయం",
+    rasi: "రాశి", star: "జన్మ నక్షత్రం", padam: "పాదము / చరణము",
+    education: "విద్యార్హత", income: "సంవత్సర ఆదాయం", occupation: "వృత్తి / ఉద్యోగం",
     phone: "మొబైల్ నెంబర్", photoUpload: "📸 ప్రొఫైల్ ఫోటో",
+    fatherName: "తండ్రి పేరు", fatherOccupation: "తండ్రి వృత్తి", motherName: "తల్లి పేరు", motherOccupation: "తల్లి వృత్తి", maternalSurnames: "మేనమామల/తల్లిగారి ఇంటిపేర్లు",
+    secPersonal: "👤 వ్యక్తిగత వివరాలు", secAstrology: "🕉️ మత & జాతక వివరాలు", secEducation: "🎓 వృత్తి & విద్యా వివరాలు", secFamily: "👨‍👩‍👧‍👦 కుటుంబ వివరాలు",
     aadhaarLabel: "🛡️ ఆధార్ ధృవీకరణ", verifyBtn: "ధృవీకరించు", verifiedBtn: "✅ పూర్తయింది",
     email: "ఈమెయిల్ ఐడి", password: "పాస్‌వర్డ్ సెట్ చేయండి", submitReg: "🪷 ప్రొఫైల్‌ను ప్రచురించు",
     submitLogin: "🔐 లాగిన్ అవ్వండి", fastFilter: "⚡ వడపోత:", id: "ప్రొఫైల్ ఐడి",
-    lockedCoords: "🔒 సంప్రదింపు వివరాలు", unlockBtn: "వివరాలు చూడండి & అన్‌లాక్ చేయండి",
+    lockedCoords: "🔒 కుటుంబ & సంప్రదింపు వివరాలు", unlockBtn: "పూర్తి బయోడేటా & ఫోన్ నెంబర్ చూడండి",
     starPrefLabel: "🔮 మీకు సమ్మతమైన నక్షత్రములు:", starPrefSub: "మీ జాతక పొంతన ప్రకారం ఇష్టమైన నక్షత్రాలను టిక్ చేయండి.",
     step1: "👉 స్టెప్ 1: కింది UPI QR కోడ్‌కు చెల్లించండి", step2: "👉 స్టెప్ 2: చెల్లింపు రుజువును నమోదు చేయండి",
     pasteUtr: "12-అంకెల UPI UTR ఐడి పేస్ట్ చేయండి", filePremium: "ప్రీమియం అభ్యర్థన పంపండి",
     pendingClaim: "📑 వివరాలు అడ్మిన్ పరిశీలనలో ఉన్నాయి. 15 నిమిషాల్లో అన్‌లాక్ చేయబడుతుంది.",
     noMatches: "క్షమించండి, మీరు ఎంచుకున్న ఫిల్టర్లకు సరిపోయే సంబంధాలు ఇంకా నమోదు కాలేదు.",
     lockedWarning: "భద్రతా కారణాల దృష్ట్యా ఫోన్ నెంబర్ దాచబడింది. అన్‌లాక్ చేయడానికి కింది బటన్ నొక్కండి.",
-    // New Matrimony Lifecycle Terms
-    filterAll: "అన్ని సంబంధాలు (All)", filterFresh: "✨ కొత్త సంబంధాలు (Fresh)", filterNearby: "📍 నా జిల్లాలో (Near Me)",
-    filterShortlisted: "💖 ఇష్టపడినవి (Shortlisted)", filterViewed: "👀 చూసినవి (Viewed)",
-    filterPassed: "❌ వదిలేసినవి (Passed)", filterBlocked: "🚫 బ్లాక్ చేసినవి (Blocked)",
-    btnShortlist: "ఇష్టపడినవి లోకి చేర్చు", btnPass: "వదిలేయండి", btnBlock: "బ్లాక్ చేయండి"
+    filterAll: "అన్ని (All)", filterFresh: "✨ కొత్తవి (Fresh)", filterNearby: "📍 నా జిల్లాలో",
+    filterShortlisted: "💖 ఇష్టపడినవి", filterViewed: "👀 చూసినవి", filterPassed: "❌ వదిలేసినవి", filterBlocked: "🚫 బ్లాక్ చేసినవి",
+    btnShortlist: "ఇష్టపడినవి లోకి చేర్చు", btnPass: "వదిలేయండి", btnBlock: "బ్లాక్ చేయండి", loadingProfile: "🔄 ప్రామాణీకరిస్తోంది..."
   },
   en: {
     logoTitle: "Mangalasutram Matrimony", logoSub: "Trusted Telugu Matchmaking",
@@ -85,28 +87,28 @@ const TRANSLATIONS = {
     namaskaram: "🙏 Welcome", premiumActive: "👑 Premium Active", logout: "Logout",
     registerTitle: "📝 Register Verified Profile", loginTitle: "🔐 Secure Login",
     switchLogin: "Already a member? Login", switchReg: "New here? Register Free",
-    firstName: "Candidate Name", lastName: "Surname", age: "Age", gender: "Gender",
+    firstName: "Candidate Name", lastName: "Surname", age: "Age", gender: "Gender", height: "Height", bloodGroup: "Blood Group",
     bride: "Bride (Female)", groom: "Groom (Male)", maritalStatus: "Marital Status",
     neverMarried: "Never Married", divorced: "Divorced", widowed: "Widowed",
-    district: "Hometown District", caste: "Caste", subCaste: "Sub-Caste",
-    gothram: "Gothram", rasi: "Rasi / Moon Sign", star: "Janma Nakshatram",
-    education: "Education", income: "Annual Income",
+    district: "Hometown District", caste: "Caste", subCaste: "Sub-Caste", gothram: "Gothram",
+    rasi: "Rasi / Moon Sign", star: "Janma Nakshatram", padam: "Padam Quarter (1-4)",
+    education: "Education", income: "Annual Income", occupation: "Occupation",
     phone: "Mobile Number", photoUpload: "📸 Attach Primary Photo",
+    fatherName: "Father's Name", fatherOccupation: "Father's Occupation", motherName: "Mother's Name", motherOccupation: "Mother's Occupation", maternalSurnames: "Maternal Surnames",
+    secPersonal: "👤 Personal Details", secAstrology: "🕉️ Religious & Astrological", secEducation: "🎓 Professional Info", secFamily: "👨‍👩‍👧‍👦 Family Background",
     aadhaarLabel: "🛡️ Identity Verification (Aadhaar)", verifyBtn: "Verify", verifiedBtn: "✅ Cleared",
     email: "Email", password: "Password", submitReg: "🪷 Deploy Profile",
     submitLogin: "🔐 Connect Session", fastFilter: "⚡ Refine Feed:", id: "UID",
-    lockedCoords: "🔒 Encrypted Info", unlockBtn: "View Bio-Data & Unlock",
+    lockedCoords: "🔒 Family & Contact Info Encrypted", unlockBtn: "View Full Bio-Data & Contact",
     starPrefLabel: "🔮 Multi-Select Match Stars:", starPrefSub: "Check compatible clusters.",
     step1: "👉 Step 1: Complete ₹499 UPI Deposit", step2: "👉 Step 2: Log Verification Ticket",
     pasteUtr: "Input 12-Digit UPI UTR", filePremium: "Submit Activation Slip",
     pendingClaim: "📑 Reference submitted! Ledger reconcile completes in 15 mins.",
     noMatches: "No matching profiles found within chosen filter variables.",
     lockedWarning: "Contact variables encrypted. Upgrade to clear encryption.",
-    // New Matrimony Lifecycle Terms
-    filterAll: "All Matches", filterFresh: "✨ Fresh Matches", filterNearby: "📍 Near Me (My District)",
-    filterShortlisted: "💖 Shortlisted", filterViewed: "👀 Recently Viewed",
-    filterPassed: "❌ Passed/Ignored", filterBlocked: "🚫 Blocked Profiles",
-    btnShortlist: "Shortlist", btnPass: "Pass", btnBlock: "Block"
+    filterAll: "All Matches", filterFresh: "✨ Fresh Matches", filterNearby: "📍 Near Me",
+    filterShortlisted: "💖 Shortlisted", filterViewed: "👀 Viewed", filterPassed: "❌ Passed", filterBlocked: "🚫 Blocked",
+    btnShortlist: "Shortlist", btnPass: "Pass", btnBlock: "Block", loadingProfile: "🔄 Loading Profile Data..."
   }
 };
 
@@ -119,7 +121,7 @@ const compressImage = (file) => {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; 
+        const MAX_WIDTH = 600; 
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
@@ -127,10 +129,19 @@ const compressImage = (file) => {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
       };
     };
   });
+};
+
+const INITIAL_FORM_STATE = {
+  firstName: '', lastName: '', age: '', height: "5'4\"", bloodGroup: 'O+', gender: 'Female', maritalStatus: 'Never Married', 
+  district: 'NTR Vijayawada (ఎన్టీఆర్ విజయవాడ)', caste: 'Brahmin (బ్రాహ్మణ)', subCaste: 'Niyogi', gothram: '', 
+  nakshatra: 'Ashwini (అశ్విని)', rasi: 'Mesha (Aries)', padam: '1', 
+  education: '', occupation: '', annualIncome: '5 - 10 Lakhs PA', phone: '', email: '', 
+  fatherName: '', fatherOccupation: '', motherName: '', motherOccupation: '', maternalSurnames: '',
+  preferredStars: [], interactions: { shortlisted: [], passed: [], blocked: [], viewed: [] } 
 };
 
 export default function App() {
@@ -148,26 +159,15 @@ export default function App() {
   const [isRegistering, setIsRegistering] = useState(true);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [upiTransactionId, setUpiTransactionId] = useState('');
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
 
-  // ✨ Advanced Lifecycle Feed Filters
-  const [lifecycleCategory, setLifecycleCategory] = useState('FRESH'); 
+  const [lifecycleCategory, setLifecycleCategory] = useState('ALL'); 
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterCaste, setFilterCaste] = useState('');
 
-  const [formData, setFormData] = useState({
-    firstName: '', lastName: '', age: '', height: "5'4\"", gender: 'Female',
-    maritalStatus: 'Never Married', district: 'NTR Vijayawada (ఎన్టీఆర్ విజయవాడ)', 
-    caste: 'Brahmin (బ్రాహ్మణ)', subCaste: 'Niyogi', gothram: '', 
-    nakshatra: 'Ashwini (అశ్విని)', rasi: 'Mesha (Aries)',
-    education: '', occupation: '', annualIncome: '5 - 10 Lakhs PA',
-    phone: '', email: '', preferredStars: [],
-    interactions: { shortlisted: [], passed: [], blocked: [], viewed: [] } // Hidden Relationship Matrix
-  });
-  
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+  const [selectedPhoto, setSelectedPhoto] = useState(null); 
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarStatus, setAadhaarStatus] = useState('UNVERIFIED');
 
@@ -175,50 +175,61 @@ export default function App() {
     return onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const q = query(collection(db, "profiles"), where("email", "==", currentUser.email));
+        const q = query(collection(db, "profiles"), where("email", "==", currentUser.email.toLowerCase()));
         return onSnapshot(q, (snapshot) => {
           if (!snapshot.empty) {
             const docData = snapshot.docs[0].data();
             setMyProfileData({ id: snapshot.docs[0].id, ...docData });
-            if (!isProfileLoaded) {
-              setFormData({
-                ...docData,
-                interactions: docData.interactions || { shortlisted: [], passed: [], blocked: [], viewed: [] }
-              });
-              setIsProfileLoaded(true);
-            }
+            
+            // Real-time synchronization layer ensuring fields maintain linkage gracefully
+            setFormData(prev => ({
+              ...INITIAL_FORM_STATE,
+              ...docData,
+              preferredStars: docData.preferredStars || prev.preferredStars || [],
+              interactions: docData.interactions || docData.interactions || { shortlisted: [], passed: [], blocked: [], viewed: [] }
+            }));
+            setIsProfileLoaded(true);
           }
         });
       } else {
         setMyProfileData(null);
         setIsProfileLoaded(false);
+        setFormData(INITIAL_FORM_STATE);
+        setSelectedPhoto(null);
+        setAadhaarNumber('');
+        setAadhaarStatus('UNVERIFIED');
       }
     });
-  }, [user, isProfileLoaded]);
+  }, [user]);
 
+  // Client-Side Microsecond Engine to prevent new entries from hiding during Server sync phase
   useEffect(() => {
-    const q = query(collection(db, "profiles"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "profiles"));
     return onSnapshot(q, (snapshot) => {
       const liveList = [];
-      snapshot.forEach((doc) => liveList.push({ id: doc.id, ...doc.data() }));
+      snapshot.forEach((doc) => {
+        liveList.push({ id: doc.id, ...doc.data() });
+      });
+      
+      liveList.sort((a, b) => {
+        const epochA = a.createdAt?.seconds || Date.now() / 1000;
+        const epochB = b.createdAt?.seconds || Date.now() / 1000;
+        return epochB - epochA;
+      });
+      
       setProfiles(liveList);
     });
   }, []);
 
-  // ✨ INTERACTION ENGINE: Permanently logs Shortlists, Passes, Blocks, and Views
-  const logInteraction = async (targetProfileId, actionType) => {
-    if (!myProfileData) return;
+  // 🛠️ RELATIONAL SECURITY FIXED: Now locks actions strictly onto Firestore Unique Doc ID
+  const logInteraction = async (targetDocId, actionType) => {
+    if (!myProfileData || !targetDocId) return;
     try {
       const ref = doc(db, "profiles", myProfileData.id);
       const fieldPath = `interactions.${actionType}`;
-      await updateDoc(ref, {
-        [fieldPath]: arrayUnion(targetProfileId)
-      });
-      // Optionally show a small alert if they shortlisted
+      await updateDoc(ref, { [fieldPath]: arrayUnion(targetDocId) });
       if (actionType === 'shortlisted') alert(lang === 'te' ? '💖 ప్రొఫైల్ ఇష్టపడిన వాటిలో చేర్చబడింది!' : '💖 Profile Shortlisted!');
-    } catch (err) {
-      console.error("Interaction failed:", err);
-    }
+    } catch (err) { console.error("Interaction failed:", err); }
   };
 
   const handleStarPreferenceToggle = (star) => {
@@ -231,8 +242,7 @@ export default function App() {
 
   const executeAadhaarShield = () => {
     if (aadhaarNumber.length !== 12 || isNaN(aadhaarNumber)) {
-      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ 12 అంకెలు ఉండాలి!' : '❌ Invalid 12-Digit Aadhaar.');
-      return;
+      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ 12 అంకెలు ఉండాలి!' : '❌ Invalid 12-Digit Aadhaar.'); return;
     }
     setAadhaarStatus('VERIFYING');
     setTimeout(() => setAadhaarStatus('VERIFIED'), 1000);
@@ -240,31 +250,27 @@ export default function App() {
 
   const handleRegistrationFlow = async (e) => {
     e.preventDefault();
-    if (selectedPhotos.length < 1) {
-      setFormError(lang === 'te' ? '⚠️ ప్రొఫైల్ ఫోటో జతపరచండి.' : '⚠️ Photo asset missing.');
-      return;
+    if (!selectedPhoto) {
+      setFormError(lang === 'te' ? '⚠️ ప్రొఫైల్ ఫోటో జతపరచండి.' : '⚠️ Photo asset missing.'); return;
     }
     if (aadhaarStatus !== 'VERIFIED') {
-      setFormError(lang === 'te' ? '🛡️ ఆధార్ వెరిఫికేషన్ పూర్తి చేయండి.' : '🛡️ Identity validation incomplete.');
-      return;
+      setFormError(lang === 'te' ? '🛡️ ఆధార్ వెరిఫికేషన్ పూర్తి చేయండి.' : '🛡️ Identity validation incomplete.'); return;
     }
     setFormError('');
     setIsSubmitting(true);
 
     try {
-      const base64Encodings = [];
-      for (let i = 0; i < selectedPhotos.length; i++) {
-        const compressedData = await compressImage(selectedPhotos[i]);
-        base64Encodings.push(compressedData);
-      }
+      const compressedData = await compressImage(selectedPhoto);
+      const formattedEmail = formData.email.trim().toLowerCase();
       
-      await createUserWithEmailAndPassword(auth, formData.email, authPassword);
+      await createUserWithEmailAndPassword(auth, formattedEmail, authPassword);
       
       const generatedProfileId = "MMS" + Math.floor(100000 + Math.random() * 900000);
       await addDoc(collection(db, "profiles"), {
         ...formData,
+        email: formattedEmail,
         profileId: generatedProfileId,
-        photos: base64Encodings,
+        photos: [compressedData], 
         isPremium: false,
         aadhaarVerified: true,
         createdAt: serverTimestamp(),
@@ -285,24 +291,18 @@ export default function App() {
     try {
       await updateDoc(doc(db, "profiles", myProfileData.id), formData);
       alert(lang === 'te' ? '✅ ప్రాధాన్యతలు నవీకరించబడ్డాయి!' : '✅ Match records updated.');
-    } catch (err) {
-      setFormError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err) { setFormError(err.message); } 
+    finally { setIsSubmitting(false); }
   };
 
   const handleAuthLoginFlow = async (e) => {
     e.preventDefault();
-    setFormError('');
-    setIsSubmitting(true);
+    setFormError(''); setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      await signInWithEmailAndPassword(auth, authEmail.trim().toLowerCase(), authPassword);
     } catch (err) {
       setFormError(lang === 'te' ? '❌ వివరాలు సరిపోలలేదు.' : '❌ Credentials error.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   const handleUpiVerificationSubmit = async (e) => {
@@ -317,43 +317,37 @@ export default function App() {
         status: 'PENDING'
       });
       setPaymentSubmitted(true);
-    } catch (err) {
-      alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
   };
 
   const targetMatchGender = myProfileData ? (myProfileData.gender === 'Male' ? 'Female' : 'Male') : 'Loading'; 
 
-  // ✨ ADVANCED MATCH ENGINE FILTER LOGIC
+  // 🛠️ HARDENED ENGINE LOOP LOOKUP LOGIC
   const getFilteredProfiles = () => {
     if (targetMatchGender === 'Loading') return [];
     
-    // Safely extract matrices or default to empty arrays
-    const iMatrix = myProfileData?.interactions || { shortlisted: [], passed: [], blocked: [], viewed: [] };
+    // Fallbacks perfectly implemented to catch old missing arrays
+    const iMatrix = {
+      shortlisted: myProfileData?.interactions?.shortlisted || [], 
+      passed: myProfileData?.interactions?.passed || [],
+      blocked: myProfileData?.interactions?.blocked || [], 
+      viewed: myProfileData?.interactions?.viewed || []
+    };
     
     return profiles.filter(p => {
-      // Base Rule 1: Always ensure opposite gender
+      // Rule 1: Eliminate matching logged-in user or same-gender options
       if (p.gender !== targetMatchGender) return false;
       
-      // Base Rule 2: Search criteria filters
+      // Rule 2: Basic Attribute Dropdowns
       if (filterCaste && p.caste !== filterCaste) return false;
       if (filterDistrict && p.district !== filterDistrict) return false;
 
-      // Lifecycle Tab Rules
-      const pid = p.profileId;
-      if (lifecycleCategory === 'ALL') {
-        // Exclude strictly passed or blocked, show everything else
-        return !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid);
-      }
-      if (lifecycleCategory === 'FRESH') {
-        // Exclude anyone they've interacted with in any way
-        return !iMatrix.shortlisted.includes(pid) && !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid) && !iMatrix.viewed.includes(pid);
-      }
-      if (lifecycleCategory === 'NEARBY') {
-        // Must be in the exact same district as the logged-in user, and not blocked/passed
-        if (p.district !== myProfileData?.district) return false;
-        return !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid);
-      }
+      // 🛡️ UNBREAKABLE MATCH CONTEXT CHECKING (Using Document unique key)
+      const pid = p.id; 
+      
+      if (lifecycleCategory === 'ALL') return !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid);
+      if (lifecycleCategory === 'FRESH') return !iMatrix.shortlisted.includes(pid) && !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid) && !iMatrix.viewed.includes(pid);
+      if (lifecycleCategory === 'NEARBY') return p.district === myProfileData?.district && !iMatrix.passed.includes(pid) && !iMatrix.blocked.includes(pid);
       if (lifecycleCategory === 'SHORTLISTED') return iMatrix.shortlisted.includes(pid);
       if (lifecycleCategory === 'VIEWED') return iMatrix.viewed.includes(pid) && !iMatrix.blocked.includes(pid);
       if (lifecycleCategory === 'PASSED') return iMatrix.passed.includes(pid);
@@ -364,6 +358,12 @@ export default function App() {
   };
 
   const visibleProfiles = getFilteredProfiles();
+  const renderFormGroup = (label, children) => (
+    <div>
+      <label className="block text-[11px] font-bold text-gray-500 mb-1">{label}</label>
+      {children}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#FCF5EB] text-[#2C1810] pb-16 antialiased">
@@ -377,8 +377,8 @@ export default function App() {
         </div>
         
         {user && (
-          <div className="flex bg-black/30 p-1 rounded-2xl border border-amber-500/20 text-xs font-bold shadow-inner overflow-x-auto">
-            <button onClick={() => setActiveTab('matches')} className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${activeTab === 'matches' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.exploreMatches}</button>
+          <div className="flex bg-black/30 p-1 rounded-2xl border border-amber-500/20 text-xs font-bold shadow-inner overflow-x-auto w-full md:w-auto">
+            <button onClick={() => setActiveTab('matches')} className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${activeTab === 'matches' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.exploreMatches}</button>
             <button onClick={() => setActiveTab('my-profile')} className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${activeTab === 'my-profile' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.myBio}</button>
             <button onClick={() => setActiveTab('payment')} className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${activeTab === 'payment' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.goPremium}</button>
           </div>
@@ -387,7 +387,7 @@ export default function App() {
         <div className="flex items-center gap-4">
           <div className="bg-black/40 border border-white/10 rounded-xl p-1 flex gap-1 font-bold text-[10px]">
             <button onClick={() => setLang('te')} className={`px-3 py-1 rounded-md transition-all ${lang === 'te' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>తెలుగు</button>
-            <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-md transition-all ${lang === 'en' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>English</button>
+            <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-md transition-all ${lang === 'en' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>EN</button>
           </div>
           {user && (
             <div className="text-right text-xs">
@@ -400,9 +400,9 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-4 mt-8">
         
-        {/* ================= GUEST PORTAL (Registration / Login) ================= */}
+        {/* ================= GUEST PORTAL ================= */}
         {!user && (
-           <div className="max-w-xl mx-auto bg-white border-t-8 border-[#7B1F1F] border-x border-b border-[#E8C99A]/60 p-6 rounded-3xl shadow-2xl">
+           <div className="max-w-2xl mx-auto bg-white border-t-8 border-[#7B1F1F] border-x border-b border-[#E8C99A]/60 p-6 rounded-3xl shadow-2xl">
             <div className="flex justify-between items-center border-b pb-3 mb-6">
               <h3 className="font-bold text-lg text-[#7B1F1F]" style={{fontFamily: "'Noto Serif Telugu', serif"}}>{isRegistering ? t.registerTitle : t.loginTitle}</h3>
               <button onClick={() => { setIsRegistering(!isRegistering); setFormError(''); }} className="text-xs font-bold text-sky-800 underline">{isRegistering ? t.switchLogin : t.switchReg}</button>
@@ -411,121 +411,70 @@ export default function App() {
             {formError && <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl font-bold mb-4">{formError}</div>}
 
             {isRegistering ? (
-              <form onSubmit={handleRegistrationFlow} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.firstName}</label>
-                    <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+              <form onSubmit={handleRegistrationFlow} className="space-y-6 max-h-[65vh] overflow-y-auto pr-2 custom-scrollbar">
+                
+                <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                  <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secPersonal}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.firstName, <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
+                    {renderFormGroup(t.lastName, <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.lastName}</label>
-                    <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                  <div className="grid grid-cols-4 gap-2">
+                    {renderFormGroup(t.age, <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white" />)}
+                    {renderFormGroup(t.height, <select value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{HEIGHTS.map(h => <option key={h} value={h}>{h}</option>)}</select>)}
+                    {renderFormGroup(t.gender, <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs font-bold bg-white"><option value="Female">{t.bride}</option><option value="Male">{t.groom}</option></select>)}
+                    {renderFormGroup(t.bloodGroup, <select value={formData.bloodGroup} onChange={e => setFormData({...formData, bloodGroup: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}</select>)}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.age}</label>
-                    <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.gender}</label>
-                    <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs font-bold text-gray-700">
-                      <option value="Female">{t.bride}</option>
-                      <option value="Male">{t.groom}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.maritalStatus}</label>
-                    <select value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      <option value="Never Married">{t.neverMarried}</option>
-                      <option value="Divorced">{t.divorced}</option>
-                      <option value="Widowed">{t.widowed}</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.maritalStatus, <select value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Never Married">{t.neverMarried}</option><option value="Divorced">{t.divorced}</option><option value="Widowed">{t.widowed}</option></select>)}
+                    {renderFormGroup(t.phone, <input type="tel" required placeholder="+91" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.caste}</label>
-                    <select value={formData.caste} onChange={e => {
-                      const selectedCaste = e.target.value;
-                      setFormData({...formData, caste: selectedCaste, subCaste: CASTE_MATRIX[selectedCaste]?.[0] || 'General'});
-                    }} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                  <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secAstrology}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.caste, <select value={formData.caste} onChange={e => setFormData({...formData, caste: e.target.value, subCaste: CASTE_MATRIX[e.target.value]?.[0] || 'General'})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}</select>)}
+                    {renderFormGroup(t.subCaste, <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}</select>)}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.subCaste}</label>
-                    <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      {CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-                    </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.gothram, <input type="text" required placeholder="e.g. Bharadwaja" value={formData.gothram} onChange={e => setFormData({...formData, gothram: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                    {renderFormGroup(t.rasi, <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Mesha (Aries)">Mesha</option><option value="Vrishabha (Taurus)">Vrishabha</option><option value="Mithuna (Gemini)">Mithuna</option><option value="Karka (Cancer)">Karka</option><option value="Simha (Leo)">Simha</option><option value="Kanya (Virgo)">Kanya</option><option value="Tula (Libra)">Tula</option><option value="Vrishchika (Scorpio)">Vrishchika</option><option value="Dhanu (Sagittarius)">Dhanu</option><option value="Makara (Capricorn)">Makara</option><option value="Kumbha (Aquarius)">Kumbha</option><option value="Meena (Pisces)">Meena</option></select>)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.star, <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}</select>)}
+                    {renderFormGroup(t.padam, <select value={formData.padam} onChange={e => setFormData({...formData, padam: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="1">1వ పాదం (Pada 1)</option><option value="2">2వ పాదం (Pada 2)</option><option value="3">3వ పాదం (Pada 3)</option><option value="4">4వ పాదం (Pada 4)</option></select>)}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.district}</label>
-                    <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                  <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secEducation}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.education, <input type="text" required placeholder="e.g. B.Tech / MBA" value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                    {renderFormGroup(t.occupation, <input type="text" required placeholder="e.g. Software Engineer" value={formData.occupation} onChange={e => setFormData({...formData, occupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.gothram}</label>
-                    <input type="text" required placeholder="e.g. Bharadwaja" value={formData.gothram} onChange={e => setFormData({...formData, gothram: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs focus:outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.rasi}</label>
-                    <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      <option value="Mesha (Aries)">Mesha (మేషం)</option>
-                      <option value="Vrishabha (Taurus)">Vrishabha (వృషభం)</option>
-                      <option value="Mithuna (Gemini)">Mithuna (మిథునం)</option>
-                      <option value="Karka (Cancer)">Karka (కర్కాటకం)</option>
-                      <option value="Simha (Leo)">Simha (సింహం)</option>
-                      <option value="Kanya (Virgo)">Kanya (కన్య)</option>
-                      <option value="Tula (Libra)">Tula (తుల)</option>
-                      <option value="Vrishchika (Scorpio)">Vrishchika (వృశ్చికం)</option>
-                      <option value="Dhanu (Sagittarius)">Dhanu (ధనుస్సు)</option>
-                      <option value="Makara (Capricorn)">Makara (మకరం)</option>
-                      <option value="Kumbha (Aquarius)">Kumbha (కుంభం)</option>
-                      <option value="Meena (Pisces)">Meena (మీనం)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.star}</label>
-                    <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      {NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.income, <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option><option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option><option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option><option value="20+ Lakhs PA">20+ Lakhs PA</option></select>)}
+                    {renderFormGroup(t.district, <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}</select>)}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.education}</label>
-                    <input type="text" required placeholder="e.g. B.Tech" value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs focus:outline-none" />
+                <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                  <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secFamily}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.fatherName, <input type="text" required value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                    {renderFormGroup(t.fatherOccupation, <input type="text" required value={formData.fatherOccupation} onChange={e => setFormData({...formData, fatherOccupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.income}</label>
-                    <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      <option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option>
-                      <option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option>
-                      <option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option>
-                      <option value="20+ Lakhs PA">20+ Lakhs PA</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderFormGroup(t.motherName, <input type="text" required value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                    {renderFormGroup(t.motherOccupation, <input type="text" required value={formData.motherOccupation} onChange={e => setFormData({...formData, motherOccupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.phone}</label>
-                  <input type="tel" required placeholder="+91" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                  {renderFormGroup(t.maternalSurnames, <input type="text" required placeholder="e.g. Yalavarthi, Kamineni..." value={formData.maternalSurnames} onChange={e => setFormData({...formData, maternalSurnames: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                 </div>
 
                 <div className="bg-amber-50/60 border border-dashed border-amber-300 p-3 rounded-xl">
                   <label className="block text-xs font-bold text-[#7B1F1F] mb-1">{t.photoUpload}</label>
-                  <input type="file" required onChange={e => setSelectedPhotos(Array.from(e.target.files))} className="w-full text-xs text-gray-500" />
+                  <input type="file" accept="image/*" required onChange={e => setSelectedPhoto(e.target.files[0])} className="w-full text-xs text-gray-500" />
                 </div>
 
                 <div className="bg-emerald-800/5 border border-emerald-700/20 p-3 rounded-xl">
@@ -574,56 +523,44 @@ export default function App() {
         {/* ================= USER ACTIVE LOGGED-IN WORKSPACE ================= */}
         {user && (
           <div>
-            {/* TAB 1: ADVANCED LIFECYCLE MATCH ENGINE */}
+            {/* TAB 1: MATCH FEED */}
             {activeTab === 'matches' && (
               <div className="space-y-6">
-                
-                {/* LIFECYCLE & SEARCH MATRIX COMMAND BAR */}
                 <div className="bg-white p-3 border border-[#E8C99A] rounded-2xl flex flex-col md:flex-row gap-3 shadow-md">
-                  
-                  {/* Category Filter Tabs */}
                   <div className="flex-1 flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                    {['FRESH', 'ALL', 'NEARBY', 'SHORTLISTED', 'VIEWED', 'PASSED', 'BLOCKED'].map(cat => (
+                    {['ALL', 'FRESH', 'NEARBY', 'SHORTLISTED', 'VIEWED', 'PASSED', 'BLOCKED'].map(cat => (
                       <button 
-                        key={cat} 
-                        onClick={() => setLifecycleCategory(cat)}
+                        key={cat} onClick={() => setLifecycleCategory(cat)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${lifecycleCategory === cat ? 'bg-[#7B1F1F] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                       >
-                        {cat === 'FRESH' && t.filterFresh}
-                        {cat === 'ALL' && t.filterAll}
-                        {cat === 'NEARBY' && t.filterNearby}
-                        {cat === 'SHORTLISTED' && t.filterShortlisted}
-                        {cat === 'VIEWED' && t.filterViewed}
-                        {cat === 'PASSED' && t.filterPassed}
+                        {cat === 'FRESH' && t.filterFresh} {cat === 'ALL' && t.filterAll}
+                        {cat === 'NEARBY' && t.filterNearby} {cat === 'SHORTLISTED' && t.filterShortlisted}
+                        {cat === 'VIEWED' && t.filterViewed} {cat === 'PASSED' && t.filterPassed}
                         {cat === 'BLOCKED' && t.filterBlocked}
                       </button>
                     ))}
                   </div>
                   
-                  {/* Deep Filters */}
                   <div className="flex gap-2 border-t md:border-t-0 md:border-l border-gray-200 pt-3 md:pt-0 md:pl-3">
                     <select value={filterCaste} onChange={e => setFilterCaste(e.target.value)} className="border rounded-xl p-2 text-xs bg-[#FFFBF7] font-semibold text-gray-700 max-w-[120px]">
-                      <option value="">All Castes</option>
-                      {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
+                      <option value="">All Castes</option>{Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-
                     <select value={filterDistrict} onChange={e => setFilterDistrict(e.target.value)} className="border rounded-xl p-2 text-xs bg-[#FFFBF7] font-semibold text-gray-700 max-w-[120px]">
-                      <option value="">All Districts</option>
-                      {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                      <option value="">All Districts</option>{DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {targetMatchGender !== 'Loading' && visibleProfiles.length === 0 ? (
+                  {targetMatchGender === 'Loading' ? (
+                    <div className="col-span-full text-center p-12 text-emerald-800 font-bold bg-emerald-50 rounded-3xl animate-pulse">{t.loadingProfile}</div>
+                  ) : visibleProfiles.length === 0 ? (
                     <div className="col-span-full text-center bg-white border border-dashed p-12 text-gray-400 rounded-3xl italic">{t.noMatches}</div>
                   ) : (
                     visibleProfiles.map(profile => (
                       <div key={profile.id} className="bg-white border-2 border-[#E8C99A]/20 rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all duration-300 relative group">
                         
-                        {/* Interaction Badge Overlay */}
-                        {myProfileData?.interactions?.shortlisted?.includes(profile.profileId) && <div className="absolute top-2 left-2 z-10 bg-pink-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">💖 Shortlisted</div>}
+                        {myProfileData?.interactions?.shortlisted?.includes(profile.id) && <div className="absolute top-2 left-2 z-10 bg-pink-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">💖 Shortlisted</div>}
                         
                         <div>
                           <div className="h-52 bg-zinc-100 relative overflow-hidden flex items-center justify-center">
@@ -643,38 +580,44 @@ export default function App() {
                             </div>
 
                             <div className="text-xs grid grid-cols-2 gap-y-2 text-gray-600 font-semibold">
-                              <p>🎂 {t.age}: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
-                              <p>📍 {t.district}: <span className="text-gray-900 font-bold">{profile.district?.split(' ')[0]}</span></p>
-                              <p>🌟 {t.star}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.nakshatra?.split(' ')[0]}</span></p>
-                              <p>🔮 {t.rasi}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.rasi?.split(' ')[0]}</span></p>
+                              <p>📏 Height: <span className="text-gray-900 font-bold">{profile.height || "5'4\""}</span></p>
+                              <p>🩸 Blood: <span className="text-gray-900 font-bold text-rose-600">{profile.bloodGroup || "O+"}</span></p>
+                              <p>🎂 Age: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
+                              <p>📍 Loc: <span className="text-gray-900 font-bold truncate block">{profile.district?.split(' ')[0]}</span></p>
+                              <p className="col-span-2 text-amber-900 font-extrabold">
+                                🌟 {profile.nakshatra?.split(' ')[0]} ({profile.padam || '1'}వ పాదం) • {profile.rasi?.split(' ')[0]}
+                              </p>
                               <p className="col-span-2 text-[11px] border-t pt-1.5 text-gray-500">{t.education}: <span className="text-gray-900 font-bold">{profile.education}</span></p>
-                              <p className="col-span-2 text-[11px] text-gray-500">{t.income}: <span className="text-gray-900 font-bold">{profile.annualIncome}</span></p>
+                              <p className="col-span-2 text-[11px] text-gray-500">{t.occupation}: <span className="text-gray-900 font-bold">{profile.occupation}</span></p>
                             </div>
                           </div>
                         </div>
 
-                        {/* ✨ ACTION BUTTONS (Shortlist / Pass / Block) */}
+                        {/* ✨ UNIFIED TO DIRECT `profile.id` MATRIX LOOKUPS */}
                         <div className="px-4 py-2 bg-gray-50 flex justify-between gap-2 border-t border-gray-100">
-                          <button onClick={() => logInteraction(profile.profileId, 'shortlisted')} className="flex-1 bg-pink-100 text-pink-700 hover:bg-pink-200 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnShortlist}</button>
-                          <button onClick={() => logInteraction(profile.profileId, 'passed')} className="flex-1 bg-gray-200 text-gray-600 hover:bg-gray-300 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnPass}</button>
-                          <button onClick={() => logInteraction(profile.profileId, 'blocked')} className="flex-1 bg-red-100 text-red-700 hover:bg-red-200 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnBlock}</button>
+                          <button onClick={() => logInteraction(profile.id, 'shortlisted')} className="flex-1 bg-pink-100 text-pink-700 hover:bg-pink-200 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnShortlist}</button>
+                          <button onClick={() => logInteraction(profile.id, 'passed')} className="flex-1 bg-gray-200 text-gray-600 hover:bg-gray-300 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnPass}</button>
+                          <button onClick={() => logInteraction(profile.id, 'blocked')} className="flex-1 bg-red-100 text-red-700 hover:bg-red-200 py-1.5 rounded-lg text-[10px] font-bold transition">{t.btnBlock}</button>
                         </div>
 
                         <div className="p-4 bg-[#FFFBF7] border-t border-gray-100 rounded-b-3xl">
                           {myProfileData?.isPremium ? (
-                            <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800 font-bold space-y-1">
-                              <p>📞 {t.phone}: {profile.phone || 'Protected'}</p>
-                              <p>📧 {t.email}: {profile.email || 'Protected'}</p>
-                              <p>🔱 {t.gothram}: <span className="text-gray-800 font-mono">{profile.gothram || 'Shiva'}</span></p>
-                              <p>🧬 {t.subCaste}: <span className="text-purple-900">{profile.subCaste || 'General'}</span></p>
+                            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-[11px] text-emerald-900 font-medium space-y-2">
+                              <div className="border-b border-emerald-200 pb-1 mb-1 font-bold text-xs text-emerald-800">🔒 Unlocked Info</div>
+                              <p>📞 Phone: <span className="font-bold">{profile.phone}</span></p>
+                              <p>🔱 Gothram: <span className="font-bold">{profile.gothram}</span> | Clan: <span className="font-bold">{profile.subCaste}</span></p>
+                              <div className="mt-2 pt-2 border-t border-emerald-200/50">
+                                <p>👨 Father: {profile.fatherName} ({profile.fatherOccupation})</p>
+                                <p>👩 Mother: {profile.motherName}</p>
+                                <p className="text-amber-900 font-bold mt-1">🧬 Relatives: {profile.maternalSurnames}</p>
+                              </div>
                             </div>
                           ) : (
                             <div className="text-center">
                               <p className="text-[10px] text-amber-900 font-bold mb-2">{t.lockedWarning}</p>
                               <button 
                                 onClick={() => {
-                                  // Mark as viewed when they try to unlock
-                                  logInteraction(profile.profileId, 'viewed');
+                                  logInteraction(profile.id, 'viewed');
                                   setActiveTab('payment');
                                 }} 
                                 className="w-full py-2 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white text-xs font-bold rounded-lg shadow-md hover:brightness-110"
@@ -691,7 +634,7 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: MANAGEMENT PORTAL */}
+            {/* TAB 2: MANAGEMENT PORTAL (My Bio) */}
             {activeTab === 'my-profile' && (
               <div className="max-w-3xl mx-auto bg-white border border-[#E8C99A] p-6 rounded-3xl shadow-lg">
                 <div className="border-b pb-2 mb-6">
@@ -699,116 +642,69 @@ export default function App() {
                 </div>
 
                 <form onSubmit={handleUpdateProfileFlow} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.firstName}</label>
-                      <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.lastName}</label>
-                      <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
-                    </div>
-                  </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.gender}</label>
-                      <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs font-bold text-gray-700">
-                        <option value="Female">{t.bride}</option>
-                        <option value="Male">{t.groom}</option>
-                      </select>
+                  <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                    <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secPersonal}</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {renderFormGroup(t.firstName, <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
+                      {renderFormGroup(t.lastName, <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.maritalStatus}</label>
-                      <select value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        <option value="Never Married">{t.neverMarried}</option>
-                        <option value="Divorced">{t.divorced}</option>
-                        <option value="Widowed">{t.widowed}</option>
-                      </select>
+                    <div className="grid grid-cols-4 gap-2">
+                      {renderFormGroup(t.age, <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white" />)}
+                      {renderFormGroup(t.height, <select value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{HEIGHTS.map(h => <option key={h} value={h}>{h}</option>)}</select>)}
+                      {renderFormGroup(t.gender, <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs font-bold bg-white"><option value="Female">{t.bride}</option><option value="Male">{t.groom}</option></select>)}
+                      {renderFormGroup(t.bloodGroup, <select value={formData.bloodGroup} onChange={e => setFormData({...formData, bloodGroup: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}</select>)}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.age}</label>
-                      <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.rasi}</label>
-                      <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        <option value="Mesha (Aries)">Mesha (మేషం)</option>
-                        <option value="Vrishabha (Taurus)">Vrishabha (వృషభం)</option>
-                        <option value="Mithuna (Gemini)">Mithuna (మిథునం)</option>
-                        <option value="Karka (Cancer)">Karka (కర్కాటకం)</option>
-                        <option value="Simha (Leo)">Simha (సింహం)</option>
-                        <option value="Kanya (Virgo)">Kanya (కన్య)</option>
-                        <option value="Tula (Libra)">Tula (తుల)</option>
-                        <option value="Vrishchika (Scorpio)">Vrishchika (వృశ్చికం)</option>
-                        <option value="Dhanu (Sagittarius)">Dhanu (ధనుస్సు)</option>
-                        <option value="Makara (Capricorn)">Makara (మకరం)</option>
-                        <option value="Kumbha (Aquarius)">Kumbha (కుంభం)</option>
-                        <option value="Meena (Pisces)">Meena (మీనం)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.star}</label>
-                      <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        {NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}
-                      </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.maritalStatus, <select value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Never Married">{t.neverMarried}</option><option value="Divorced">{t.divorced}</option><option value="Widowed">{t.widowed}</option></select>)}
+                      {renderFormGroup(t.phone, <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white focus:outline-none" />)}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.caste}</label>
-                      <select value={formData.caste} onChange={e => {
-                        const selectedCaste = e.target.value;
-                        setFormData({...formData, caste: selectedCaste, subCaste: CASTE_MATRIX[selectedCaste]?.[0] || 'General'});
-                      }} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                  <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                    <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secAstrology}</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.gothram, <input type="text" required value={formData.gothram} onChange={e => setFormData({...formData, gothram: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                      {renderFormGroup(t.rasi, <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Mesha (Aries)">Mesha</option><option value="Vrishabha (Taurus)">Vrishabha</option><option value="Mithuna (Gemini)">Mithuna</option><option value="Karka (Cancer)">Karka</option><option value="Simha (Leo)">Simha</option><option value="Kanya (Virgo)">Kanya</option><option value="Tula (Libra)">Tula</option><option value="Vrishchika (Scorpio)">Vrishchika</option><option value="Dhanu (Sagittarius)">Dhanu</option><option value="Makara (Capricorn)">Makara</option><option value="Kumbha (Aquarius)">Kumbha</option><option value="Meena (Pisces)">Meena</option></select>)}
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.subCaste}</label>
-                      <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        {CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-                      </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.star, <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}</select>)}
+                      {renderFormGroup(t.padam, <select value={formData.padam} onChange={e => setFormData({...formData, padam: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="1">1వ పాదం (Pada 1)</option><option value="2">2వ పాదం (Pada 2)</option><option value="3">3వ పాదం (Pada 3)</option><option value="4">4వ పాదం (Pada 4)</option></select>)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.caste, <select value={formData.caste} onChange={e => setFormData({...formData, caste: e.target.value, subCaste: CASTE_MATRIX[e.target.value]?.[0] || 'General'})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}</select>)}
+                      {renderFormGroup(t.subCaste, <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}</select>)}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.district}</label>
-                      <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
+                  <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                    <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secFamily}</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.fatherName, <input type="text" required value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                      {renderFormGroup(t.fatherOccupation, <input type="text" required value={formData.fatherOccupation} onChange={e => setFormData({...formData, fatherOccupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.phone}</label>
-                      <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.motherName, <input type="text" required value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                      {renderFormGroup(t.motherOccupation, <input type="text" required value={formData.motherOccupation} onChange={e => setFormData({...formData, motherOccupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                     </div>
+                    {renderFormGroup(t.maternalSurnames, <input type="text" required value={formData.maternalSurnames} onChange={e => setFormData({...formData, maternalSurnames: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.education}</label>
-                      <input type="text" required value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                  <div className="bg-[#FFFBF7] p-4 rounded-2xl border border-[#E8C99A]/40 space-y-3">
+                    <h4 className="text-xs font-extrabold text-[#7B1F1F] border-b border-[#E8C99A]/40 pb-2">{t.secEducation}</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.education, <input type="text" required value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
+                      {renderFormGroup(t.occupation, <input type="text" required value={formData.occupation} onChange={e => setFormData({...formData, occupation: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white focus:outline-none" />)}
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.income}</label>
-                      <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        <option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option>
-                        <option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option>
-                        <option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option>
-                        <option value="20+ Lakhs PA">20+ Lakhs PA</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderFormGroup(t.district, <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white">{DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}</select>)}
+                      {renderFormGroup(t.income, <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 text-xs bg-white"><option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option><option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option><option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option><option value="20+ Lakhs PA">20+ Lakhs PA</option></select>)}
                     </div>
                   </div>
 
                   <div className="bg-[#FFFBF7] border border-[#E8C99A] p-4 rounded-2xl">
                     <label className="block text-xs font-extrabold text-[#7B1F1F] uppercase mb-1">{t.starPrefLabel}</label>
                     <p className="text-[11px] text-gray-500 mb-4">{t.starPrefSub}</p>
-                    
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {NAKSHATRAMS.map(star => {
                         const isChecked = formData.preferredStars?.includes(star);
@@ -837,14 +733,12 @@ export default function App() {
                 
                 <div className="my-6 p-4 bg-[#FFFBF7] border border-dashed border-amber-400 space-y-4 rounded-2xl">
                   <p className="text-xs font-bold text-gray-700 uppercase">{t.step1}</p>
-                  
                   <div className="w-36 h-36 bg-zinc-50 border rounded-xl mx-auto flex flex-col items-center justify-center p-1 shadow-inner">
                     <div className="w-full h-full border border-dashed border-zinc-300 flex flex-col items-center justify-center font-mono font-bold text-[9px] text-zinc-400 bg-white p-1">
                       <span>[ UPI QR CODE ]</span>
                       <span className="text-[7px] font-sans text-center mt-1 text-gray-500">Scan via PhonePe / GPay / Paytm</span>
                     </div>
                   </div>
-
                   <div className="bg-white px-3 py-2 rounded-xl border font-mono text-xs text-[#7B1F1F] font-bold">
                     <span>UPI ID: sambasiva.rao@upi</span>
                   </div>
@@ -869,10 +763,8 @@ export default function App() {
                 )}
               </div>
             )}
-
           </div>
         )}
-
       </main>
     </div>
   );
