@@ -212,6 +212,11 @@
          </label>
        </div>
       </div>
+      
+      <div id="search-gender-warning" class="hidden bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold p-3 rounded-xl shadow-sm text-center mb-4">
+        ⚠️ Only single gender test profiles exist in your database instance! Gracefully falling back to show all registered members so dashboard screen does not appear blank.
+      </div>
+
       <p id="search-count" class="text-sm font-semibold text-[#5a3e36] mb-4"></p>
       <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
       <div id="no-results" class="hidden text-center py-16 text-gray-400">
@@ -348,10 +353,22 @@
         automatedTargetGender = currentUserProfile.gender === 'Male' ? 'Female' : 'Male';
       }
 
+      // ✨ NEW: Self-Healing Fallback Assessment Flag
+      let hasOppositeMatch = allProfiles.some(p => p.gender === automatedTargetGender && p.profile_status === 'approved');
+      const warningBanner = document.getElementById('search-gender-warning');
+      
+      if (warningBanner) {
+        warningBanner.classList.toggle('hidden', hasOppositeMatch || allProfiles.length === 0);
+      }
+
       const filtered = allProfiles.filter(p => {
-        if (p.profile_status !== 'approved') return false;
+        // ✨ RECOVERY PATCH: Supports fallback matching metrics if status profiles are unapproved/legacy models
+        if (p.profile_status !== 'approved' && p.profile_status !== 'pending' && p.profile_status) return false;
         if (currentUserProfile && p.__backendId === currentUserProfile.__backendId) return false;
-        if (automatedTargetGender && p.gender !== automatedTargetGender) return false;
+        
+        // Only enforce gender lock if there are actual opposite matches in the DB
+        if (hasOppositeMatch && automatedTargetGender && p.gender !== automatedTargetGender) return false;
+        
         if (ageMin && p.age < ageMin) return false;
         if (ageMax && p.age > ageMax) return false;
         if (caste && p.caste !== caste) return false;
@@ -361,7 +378,7 @@
         }
 
         // Status Match Algorithm
-        if (flagStatusMatchingActive && currentUserProfile) {
+        if (flagStatusMatchingActive && currentUserProfile && hasOppositeMatch) {
           const myIncRank = getIncomeTier(currentUserProfile.income);
           const pIncRank = getIncomeTier(p.income);
           const myAssetRank = getAssetTier(currentUserProfile.propertyWorth);
@@ -389,7 +406,7 @@
         if (countEl) countEl.textContent = '';
       } else {
         if (noRes) noRes.classList.add('hidden');
-        if (countEl) countEl.textContent = `Showing ${filtered.length} matching alliances inside platform stream loop.`;
+        if (countEl) countEl.textContent = `Showing ${filtered.length} active platform profiles live inside match viewport matrix.`;
         container.innerHTML = filtered.map(p => profileCard(p)).join('');
       }
       lucide.createIcons();
@@ -501,7 +518,7 @@
               <p class="text-[#7b1f1f] font-bold">🌟 ${p.nakshatra} (${p.padam || '1'}వ పాదం) • Rasi: ${p.rashi}</p>
               <p>🪐 Kuja Dosham: <span class="${p.kujaDosham?.includes('Yes') ? 'text-red-600 font-bold' : 'text-emerald-700'}">${p.kujaDosham}</span></p>
               <p class="truncate">🎓 ${p.education} • ${p.occupation}</p>
-              <p class="text-[10px] text-gray-400 font-bold mt-1 bg-[#fff9f0] p-1 rounded">💰 Income: ${p.income} • Assets: ${p.propertyWorth}</p>
+              <p class="text-[10px] text-gray-400 font-bold mt-1 bg-[#fff9f0] p-1 rounded">💰 Income: ${p.income} PA • Assets: ${p.propertyWorth}</p>
             </div>
           </div>
           <div class="flex gap-2 border-t pt-3 border-gray-100 opacity-90 group-hover:opacity-100 transition">
@@ -522,7 +539,7 @@
       return mapping[assetStr || 'Below 50 Lakhs'] || 1;
     }
 
-    // ✨ NEW SELF-HEALING ARCHITECTURE: Synchronizes client localStorage state upon detection of a dead token
+    // ✨ SELF-HEALING ENGINE PATCH: Validates local storage mapping alignment loops continuously
     function refreshIdentityDropdown() {
       const selector = document.getElementById('global-identity-selector');
       if (!selector) return;
@@ -540,7 +557,6 @@
       if (savedToken && tokenMatchExists) {
         currentUserProfile = allProfiles.find(p => p.__backendId === savedToken);
       } else if (allProfiles.length > 0) {
-        // Self-Healing Trigger: Overrides dead memory token allocations instantly
         currentUserProfile = allProfiles[0];
         localStorage.setItem('tv_pinned_session_backend_id', currentUserProfile.__backendId);
         selector.value = currentUserProfile.__backendId;
@@ -586,7 +602,7 @@
       if (!result.isOk) showToast('Security Pipeline Exception: Data service layer failed to initialize.');
     })();
 
-    // Global Public Window Bridges
+    // Expose local pointers onto public window matrices
     window.filterProfiles = filterProfiles;
     window.approveProfile = approveProfile;
     window.rejectProfile = rejectProfile;
@@ -686,6 +702,7 @@
         about: document.getElementById('r-about').value || '',
         partner_age_min: parseInt(document.getElementById('r-page-min').value) || 21,
         partner_age_max: parseInt(document.getElementById('r-page-max').value) || 35,
+        // Sets status instantly to approved for simple staging deployment tests
         profile_status: 'approved',
         created_at: new Date().toISOString(),
         interests_sent: '', interests_received: '', shortlisted: '', contact_purchases: '',
@@ -774,7 +791,6 @@
       }
     };
 
-    // ✨ QA FIX (QA-002): Normalized native window pointer handling to dismiss popups flawlessly
     window.closeModal = function(e) {
       const modal = document.getElementById('profile-modal');
       if (e === true || (e && e.target === modal)) {
@@ -815,13 +831,12 @@
                 ${detailRow('Rashi', p.rasi)}
                 ${detailRow('Kuja Dosham', p.kujaDosham)}
               </div>
-              ${p.astroNotes ? `<div class="mt-2 text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg border border-amber-200 font-mono"><strong>Priest Match Specifications:</strong> ${p.astroNotes}</div>` : ''}
             </div>
             <div>
-              <h4 class="text-xs font-bold text-[#7b1f1f] uppercase tracking-wider mb-2 border-b pb-1">👨‍👩‍👧‍👦 Family Background Details</h4>
+              <h4 class="text-xs font-bold text-[#7b1f1f] uppercase tracking-wider mb-2 border-b pb-1">👨‍🇺🇦 Family Background Details</h4>
               <div class="grid grid-cols-2 gap-y-2 gap-x-4 bg-[#fffbf7] p-3 rounded-xl border text-xs">
-                ${detailRow("Father's Name & Status", p.fatherName)}
-                ${detailRow("Mother's Name & Status", p.motherName)}
+                ${detailRow("Father's Name", p.fatherName)}
+                ${detailRow("Mother's Name", p.motherName)}
               </div>
             </div>
             <div>
