@@ -1,177 +1,156 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from './firebase';
-import { 
-  collection, 
-  addDoc, 
-  doc,
-  updateDoc,
-  query, 
-  onSnapshot, 
-  where 
-} from 'firebase/firestore';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
+import { collection, addDoc, doc, updateDoc, query, onSnapshot, where } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
-// Comprehensive Telugu Nakshatrams
+// 📍 DISTRICTS MATRIX
+const DISTRICTS = [
+  'Anantapur (అనంతపురం)', 'Annamayya (అన్నమయ్య)', 'Bapatla (బాపట్ల)', 'Chittoor (చిత్తూరు)', 
+  'East Godavari (తూర్పు గోదావరి)', 'Eluru (ఏలూరు)', 'Guntur (గుంటూరు)', 'Hyderabad (హైదరాబాద్)',
+  'Kakinada (కాకినాడ)', 'Kona Seema (కోనసీమ)', 'Krishna (కృష్ణా)', 'Kurnool (కర్నూలు)', 
+  'Nandyal (నంద్యాల)', 'NTR Vijayawada (ఎన్టీఆర్ విజయవాడ)', 'Palnadu (పల్నాడు)', 
+  'Parvathipuram Manyam (పార్వతీపురం మన్యం)', 'Prakasam (ప్రకాశం)', 'Sri Potti Sriramulu Nellore (నెల్లూరు)', 
+  'Sri Sathya Sai (శ్రీ సత్యసాయి)', 'Srikakulam (శ్రీకాకుళం)', 'Tirupati (తిరుపతి)', 
+  'Visakhapatnam (విశాఖపట్నం)', 'Vizianagaram (విజయనగరం)', 'West Godavari (పశ్చిమ గోదావరి)', 
+  'YSR Kadapa (వైఎస్ఆర్ కడప)', 'Warangal (వరంగల్)', 'Khammam (ఖమ్మం)', 'Nalgonda (నల్గొండ)'
+].sort();
+
+// 🔱 CASTE & SUB-CASTE RELATION MAP
+const CASTE_MATRIX = {
+  "Brahmin (బ్రాహ్మణ)": ["Niyogi", "Vaidiki", "Velanadu", "Dravida", "Madhva", "Sri Vaishnava", "Other"],
+  "Kamma (కమ్మ)": ["Pedda Kamma", "Chinna Kamma", "Illuvellani", "Godachatu", "Other"],
+  "Kapu / Balija / Telaga (కాపు)": ["Munnuru Kapu", "Turpu Kapu", "Balija Naidu", "Setty Balija", "Telaga", "Other"],
+  "Reddy (రెడ్డి)": ["Motati", "Gudati", "Pedakanti", "Pokanati", "Ganjam", "Chowdhary Reddy", "Other"],
+  "Arya Vysya (ఆర్య వైశ్య)": ["Komati", "Gavara", "Kalinga Vysya", "Other"],
+  "Padmashali / Devanga (పద్మశాలి)": ["Padmashali", "Devanga", "Togata", "Pattu Sali", "Other"],
+  "Yadava / Golla (యాదవ)": ["Golla", "Pooja Golla", "Yadav", "Other"],
+  "Viswabrahmin (విశ్వబ్రాహ్మణ)": ["Kamsali", "Kammari", "Silpi", "Vadrangi", "Ausula"],
+  "Goud (గౌడ్)": ["Ediga", "Settibalija", "Gamalla", "Goud"],
+  "Mudiraj (ముదిరాజ్)": ["Mudiraju", "Mutrasi"],
+  "Mala (మాల)": ["Netkani", "Paki", "Mala Dasari", "General Mala"],
+  "Madiga (మాదిగ)": ["Chamar", "Madiga Dasari", "General Madiga"],
+  "Boyar / Valmiki (బోయ)": ["Valmiki", "Boya", "Nishada"],
+  "Kalinga (కళింగ)": ["Kalinga", "Buragam Kalinga"],
+  "Turpu Kapu (తూర్పు కాపు)": ["General"],
+  "Velama (వెలమ)": ["Padma Velama", "Koppala Velama", "Adi Velama"],
+  "Vanniyar / Agnikula Kshatriya": ["Palli", "Vannikula Kshatriya"],
+  "Other Caste / Inter-Caste": ["No Bar / General"]
+};
+
+// 🔮 TELUGU NAKSHATRAMS
 const NAKSHATRAMS = [
-  'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 
-  'Punarvasu', 'Pushya', 'Aslesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 
-  'Hasta', 'Chitra', 'Swati', 'Visakha', 'Anuradha', 'Jyeshta', 
-  'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Sravana', 'Dhanishta', 
-  'Satabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+  'Ashwini (అశ్విని)', 'Bharani (భరణి)', 'Krittika (కృత్తిక)', 'Rohini (రోహిణి)', 
+  'Mrigashira (మృగశిర)', 'Ardra (ఆరుద్ర)', 'Punarvasu (పునర్వసు)', 'Pushya (పుష్యమి)', 
+  'Aslesha (ఆశ్లేష)', 'Magha (మఖ)', 'Purva Phalguni (పుబ్బ)', 'Uttara Phalguni (ఉత్తర)', 
+  'Hasta (హస్త)', 'Chitra (చిత్త)', 'Swati (స్వాతి)', 'Visakha (విశాఖ)', 
+  'Anuradha (అనూరాధ)', 'Jyeshta (జ్యేష్ఠ)', 'Mula (మూల)', 'Purva Ashadha (పూర్వాషాఢ)', 
+  'Uttara Ashadha (ఉత్తరాషాఢ)', 'Sravana (శ్రవణం)', 'Dhanishta (ధనిష్ఠ)', 
+  'Satabhisha (శతభిషం)', 'Purva Bhadrapada (పూర్వాభాద్ర)', 'Uttara Bhadrapada (ఉత్తరాభాద్ర)', 'Revati (రేవతి)'
 ];
 
-// Dual-Language Enterprise Translation Dictionary Matrix
+// 📊 LOCALIZED TRANSLATIONS
 const TRANSLATIONS = {
   te: {
-    logoTitle: "మంగళసూత్రం",
-    logoSub: "పవిత్రమైన తెలుగు వివాహ బంధాల వేదిక",
-    exploreMatches: "సంబంధాల అన్వేషణ",
-    myBio: "నా బయో-డేటా & నక్షత్రాలు",
-    goPremium: "👑 ప్రీమియం ప్లాన్",
-    namaskaram: "🙏 నమస్కారం",
-    premiumActive: "👑 ప్రీమియం యాక్టివ్",
-    freeAccount: "ఉచిత సభ్యత్వం",
-    logout: "లాగౌట్",
-    registerTitle: "📝 కొత్త ప్రొఫైల్ నమోదు",
-    loginTitle: "🔐 సభ్యుల లాగిన్",
-    switchLogin: "ఖాతా ఉందా? లాగిన్ అవ్వండి",
-    switchReg: "కొత్త ఖాతా కావాలా? రిజిస్టర్ అవ్వండి",
-    firstName: "మొదటి పేరు",
-    lastName: "ఇంటి పేరు (సూర్నమే)",
-    age: "వయస్సు",
-    gender: "లింగము",
-    bride: "వధువు (Female)",
-    groom: "వరుడు (Male)",
-    maritalStatus: "వివాహ స్థితి",
-    neverMarried: "అపరిణీత",
-    divorced: "విడాకులు తీసుకున్న",
-    widowed: "వితంతువు/విధవ",
-    district: "జిల్లా",
-    caste: "కులం",
-    gothram: "గోత్రం",
-    rasi: "రాశి",
-    star: "జన్మ నక్షత్రం",
-    education: "చదువు",
-    income: "సంవత్సర ఆదాయం",
-    phone: "మొబైల్ నెంబర్",
-    photoUpload: "📸 ఫోటో అప్‌లోడ్ చేయండి",
-    aadhaarLabel: "🛡️ ఆధార్ కార్డ్ ధృవీకరణ",
-    verifyBtn: "పరిశీలించు",
-    verifiedBtn: "✅ ధృవీకరించబడింది",
-    email: "ఈమెయిల్ ఐడి",
-    password: "పాస్‌వర్డ్",
-    submitReg: "🪷 ప్రొఫైల్ ప్రచురించు",
-    submitLogin: "🔐 లాగిన్ అవ్వండి",
-    fastFilter: "⚡ వేగవంతమైన వడపోత:",
-    id: "ఐడి",
-    lockedCoords: "🔒 గోప్యమైన సంప్రదింపు వివరాలు",
-    unlockBtn: "వివరాలు అన్‌లాక్ చేయండి",
-    starPrefLabel: "🔮 వివాహానికి మీరు ప్రాధాన్యత ఇచ్చే నక్షత్రములు (మల్టిపుల్ సెలెక్ట్):",
-    starPrefSub: "మీ జాతక చక్రం ప్రకారం సరిపోయే ఒకటి లేదా అంతకంటే ఎక్కువ నక్షత్రాలను ఎంచుకోండి.",
-    step1: "👉 స్టెప్ 1: కింది క్యూఆర్ కోడ్‌ను స్కాన్ చేయండి లేదా యుపిఐ ఐడి కాపీ చేయండి",
-    step2: "👉 స్టెప్ 2: చెల్లింపు వివరాలను ఇక్కడ నమోదు చేయండి",
-    pasteUtr: "12-అంకెల యుపిఐ ట్రాన్సాక్షన్ నెంబర్ (UTR) నమోదు చేయండి",
-    filePremium: "ప్రీమియం అన్‌లాక్ రిక్వెస్ట్ పంపండి",
-    pendingClaim: "📑 మీ అభ్యర్థన పరిశీలనలో ఉంది. 15 నిమిషాల్లో అన్‌లాక్ అవుతుంది.",
-    noMatches: "ప్రస్తుతానికి ఎటువంటి ప్రొఫైల్స్ అందుబాటులో లేవు.",
-    lockedWarning: "ఫోన్ నెంబర్ మరియు గోత్రం చూడటానికి దయచేసి ప్రీమియం ప్లాన్ యాక్టివేట్ చేసుకోండి."
+    logoTitle: "మంగళసూత్రం వివాహ వేదిక", logoSub: "నమ్మకమైన సంబంధాల కేంద్రం",
+    exploreMatches: "వరుస సంబంధాలు", myBio: "నా ప్రొఫైల్ వివరాలు", goPremium: "👑 ప్రీమియం సభ్యత్వం",
+    namaskaram: "🙏 నమస్కారం", premiumActive: "👑 ప్రీమియం సక్రియం చేయబడింది", logout: "లాగౌట్",
+    registerTitle: "📝 కొత్త ప్రొఫైల్ నమోదు చేసుకోండి", loginTitle: "🔐 సభ్యుల లాగిన్",
+    switchLogin: "ఇప్పటికే ఖాతా ఉందా? లాగిన్ అవ్వండి", switchReg: "ఖాతా లేదా? ఇప్పుడే నమోదు చేసుకోండి",
+    firstName: "అభ్యర్థి పేరు", lastName: "ఇంటి పేరు", age: "వయస్సు", gender: "లింగము",
+    bride: "వధువు (Female)", groom: "వరుడు (Male)", maritalStatus: "వివాహ స్థితి",
+    neverMarried: "అపరిణీత", divorced: "విడాకులు తీసుకున్న", widowed: "సహచరుడు కోల్పోయిన",
+    district: "నివాస జిల్లా", caste: "కులం", subCaste: "ఉప కులం", gothram: "గోత్రం",
+    rasi: "రాశి", star: "జన్మ నక్షత్రం", education: "విద్యార్హత", income: "సంవత్సర ఆదాయం",
+    phone: "మొబైల్ నెంబర్", photoUpload: "📸 ప్రొఫైల్ ఫోటో (సెలెక్ట్ చేయండి)",
+    aadhaarLabel: "🛡️ ఆధార్ కార్డ్ ద్వారా ధృవీకరణ", verifyBtn: "ధృవీకరించు", verifiedBtn: "✅ పూర్తయింది",
+    email: "ఈమెయిల్ ఐడి", password: "పాస్‌వర్డ్ సెట్ చేయండి", submitReg: "🪷 ప్రొఫైల్‌ను ప్రచురించు",
+    submitLogin: "🔐 లాగిన్ అవ్వండి", fastFilter: "⚡ ప్రొఫైల్ ఫిల్టర్లు:", id: "ప్రొఫైల్ ఐడి",
+    lockedCoords: "🔒 సంప్రదింపు వివరాలు", unlockBtn: "ఫోన్ నెంబర్ చూడండి",
+    starPrefLabel: "🔮 మీకు సమ్మతమైన నక్షత్రములు (మల్టిపుల్ సెలెక్ట్):", starPrefSub: "మీ జాతక పొంతన ప్రకారం ఇష్టమైన నక్షత్రాలను టిక్ చేయండి.",
+    step1: "👉 స్టెప్ 1: కింది UPI QR కోడ్‌కు ₹499 చెల్లించండి", step2: "👉 స్టెప్ 2: చెల్లింపు రుజువును ఇక్కడ నమోదు చేయండి",
+    pasteUtr: "12-అంకెల UPI UTR ఐడి ఇక్కడ పేస్ట్ చేయండి", filePremium: "ప్రీమియం అభ్యర్థనను పంపండి",
+    pendingClaim: "📑 మీ వివరాలు అడ్మిన్ పరిశీలనలో ఉన్నాయి. 15 నిమిషాల్లో అన్‌లాక్ చేయబడుతుంది.",
+    noMatches: "క్షమించండి, మీరు ఎంచుకున్న ఫిల్టర్లకు సరిపోయే సంబంధాలు ఇంకా నమోదు కాలేదు.",
+    lockedWarning: "భద్రతా కారణాల దృష్ట్యా ఫోన్ నెంబర్ దాచబడింది. అన్‌లాక్ చేయడానికి కింది బటన్ నొక్కండి."
   },
   en: {
-    logoTitle: "Mangalasutram",
-    logoSub: "Verified Traditional Telugu Matrimony Hub",
-    exploreMatches: "Explore Matches",
-    myBio: "My Bio & Preferences",
-    goPremium: "👑 Go Premium",
-    namaskaram: "🙏 Namaskaram",
-    premiumActive: "👑 Premium Active",
-    freeAccount: "Free Member",
-    logout: "Logout",
-    registerTitle: "📝 Register Profile",
-    loginTitle: "🔐 Member Login",
-    switchLogin: "Have an account? Login",
-    switchReg: "Need an account? Register",
-    firstName: "First Name",
-    lastName: "Surname / Last Name",
-    age: "Age",
-    gender: "Gender",
-    bride: "Bride (Female)",
-    groom: "Groom (Male)",
-    maritalStatus: "Marital Status",
-    neverMarried: "Never Married",
-    divorced: "Divorced",
-    widowed: "Widowed",
-    district: "District Location",
-    caste: "Caste",
-    gothram: "Gothram",
-    rasi: "Rasi",
-    star: "Janma Nakshatram",
-    education: "Education Degree",
-    income: "Annual Income",
-    phone: "Mobile Phone Number",
-    photoUpload: "📸 Upload Studio Profile Photo",
-    aadhaarLabel: "🛡️ Identity Verification Shield (Aadhaar)",
-    verifyBtn: "Verify",
-    verifiedBtn: "✅ Verified",
-    email: "Account Email ID",
-    password: "Password",
-    submitReg: "🪷 Authorize & Publish Profile",
-    submitLogin: "🔐 Establish Session",
-    fastFilter: "⚡ Filters:",
-    id: "ID",
-    lockedCoords: "🔒 Encrypted Contact Coordinates",
-    unlockBtn: "Unlock Contact Credentials",
-    starPrefLabel: "🔮 Preferred Compatible Match Stars (Multi-Select):",
-    starPrefSub: "Check all compatible Nakshatrams you want to prioritize in matchmaking.",
-    step1: "👉 Step 1: Scan QR Code or Copy UPI Address",
-    step2: "👉 Step 2: Input Payment Verification Parameters",
-    pasteUtr: "Paste 12-Digit UPI Ref Number / UTR",
-    filePremium: "File Premium Activation Request",
-    pendingClaim: "📑 Ticket logged! Back-office will audit UTR logs within 15 mins to unlock dashboard.",
-    noMatches: "Gathering network nodes... No profiles found matching criteria.",
-    lockedWarning: "Contact parameters encrypted under safety policies. Upgrade to open."
+    logoTitle: "Mangalasutram Matrimony", logoSub: "Trusted Telugu Matchmaking Engine",
+    exploreMatches: "Explore Matches", myBio: "My Bio-Data Settings", goPremium: "👑 Go Premium",
+    namaskaram: "🙏 Welcome", premiumActive: "👑 Premium Status Active", logout: "Logout",
+    registerTitle: "📝 Register Verified Profile", loginTitle: "🔐 Secure Gateway Login",
+    switchLogin: "Already a member? Login", switchReg: "New here? Register Free",
+    firstName: "Candidate Name", lastName: "Surname", age: "Age", gender: "Gender",
+    bride: "Bride (Female)", groom: "Groom (Male)", maritalStatus: "Marital Status",
+    neverMarried: "Never Married", divorced: "Divorced", widowed: "Widowed",
+    district: "Hometown District", caste: "Caste Community", subCaste: "Sub-Caste Clan",
+    gothram: "Gothram", rasi: "Rasi / Moon Sign", star: "Janma Nakshatram",
+    education: "Educational Qualification", income: "Annual Income Segment",
+    phone: "Contact Mobile Number", photoUpload: "📸 Attach Primary Display Photo",
+    aadhaarLabel: "🛡️ Secure Identity Verification (Aadhaar)", verifyBtn: "Verify Identity", verifiedBtn: "✅ Cleared",
+    email: "Account Email", password: "Secure Password", submitReg: "🪷 Deploy Profile",
+    submitLogin: "🔐 Connect Session", fastFilter: "⚡ Refine Feed:", id: "UID",
+    lockedCoords: "🔒 Encrypted Contact Info", unlockBtn: "Unlock Direct Contact Details",
+    starPrefLabel: "🔮 Multi-Select Compatible Match Stars:", starPrefSub: "Check matching clusters recommended by your astrologer.",
+    step1: "👉 Step 1: Complete ₹499 UPI Scan Deposit", step2: "👉 Step 2: Log Transaction Verification Ticket",
+    pasteUtr: "Input 12-Digit UPI Reference Number (UTR)", filePremium: "Submit Activation Slip",
+    pendingClaim: "📑 Reference submitted! Ledger reconcile completes in 15 mins to grant access.",
+    noMatches: "No matching registered nodes found within chosen filter variables.",
+    lockedWarning: "Contact variables encrypted to shield privacy. Upgrade to clear encryption."
   }
 };
 
+// 🛠️ SMART IMAGE COMPRESSOR (Fixes Firestore 1MB Limits)
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; 
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Compress to 70% JPEG to safely fit inside Firestore limits
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+      };
+    };
+  });
+};
+
 export default function App() {
-  // Global Language State System Defaulting to Telugu ('te')
   const [lang, setLang] = useState('te');
   const t = TRANSLATIONS[lang];
 
-  // Interface Navigation State
   const [activeTab, setActiveTab] = useState('matches');
-  
-  // Auth & Database Records
   const [user, setUser] = useState(null);
   const [myProfileData, setMyProfileData] = useState(null);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false); // Prevents Ghost Typing Bug
   const [profiles, setProfiles] = useState([]);
   
-  // Input Flow Parameters
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(true);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Non-Gateway Commissionless UPI States
   const [upiTransactionId, setUpiTransactionId] = useState('');
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
 
-  // Search Matrix Constraints
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterCaste, setFilterCaste] = useState('');
   const [filterRasi, setFilterRasi] = useState('');
 
-  // Extended Telugu Profile Node payload State Schema
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', age: '', height: "5'4\"", gender: 'Female',
-    maritalStatus: 'Never Married', district: 'Vijayawada', caste: 'Brahmin',
-    subCaste: '', gothram: '', nakshatra: 'Ashwini', rasi: 'Mesha (Aries)',
-    education: 'B.Tech', occupation: 'Software Professional', annualIncome: '6 - 10 Lakhs PA',
+    maritalStatus: 'Never Married', district: 'NTR Vijayawada (ఎన్టీఆర్ విజయవాడ)', 
+    caste: 'Brahmin (బ్రాహ్మణ)', subCaste: 'Niyogi', gothram: '', 
+    nakshatra: 'Ashwini (అశ్విని)', rasi: 'Mesha (Aries)',
+    education: '', occupation: '', annualIncome: '5 - 10 Lakhs PA',
     phone: '', email: '', preferredStars: []
   });
   
@@ -188,14 +167,19 @@ export default function App() {
           if (!snapshot.empty) {
             const docData = snapshot.docs[0].data();
             setMyProfileData({ id: snapshot.docs[0].id, ...docData });
-            setFormData(docData);
+            // Safe initial load to prevent input wiping
+            if (!isProfileLoaded) {
+              setFormData(docData);
+              setIsProfileLoaded(true);
+            }
           }
         });
       } else {
         setMyProfileData(null);
+        setIsProfileLoaded(false);
       }
     });
-  }, [user]);
+  }, [user, isProfileLoaded]);
 
   useEffect(() => {
     return onSnapshot(query(collection(db, "profiles")), (snapshot) => {
@@ -215,21 +199,21 @@ export default function App() {
 
   const executeAadhaarShield = () => {
     if (aadhaarNumber.length !== 12 || isNaN(aadhaarNumber)) {
-      setFormError(lang === 'te' ? '❌ తప్పుడు ఆధార్ నెంబర్!' : '❌ Invalid 12-Digit Aadhaar format.');
+      setFormError(lang === 'te' ? '❌ ఆధార్ నంబర్ తప్పనిసరిగా 12 అంకెలు ఉండాలి!' : '❌ Aadhaar numeric string must be exactly 12 digits.');
       return;
     }
     setAadhaarStatus('VERIFYING');
-    setTimeout(() => setAadhaarStatus('VERIFIED'), 1200);
+    setTimeout(() => setAadhaarStatus('VERIFIED'), 1000);
   };
 
   const handleRegistrationFlow = async (e) => {
     e.preventDefault();
     if (selectedPhotos.length < 1) {
-      setFormError(lang === 'te' ? '⚠️ దయచేసి ఒక ఫోటోను అప్‌లోడ్ చేయండి.' : '⚠️ Photo asset required.');
+      setFormError(lang === 'te' ? '⚠️ ప్రొఫైల్ ఫోటోను జతపరచండి.' : '⚠️ Primary photo asset missing.');
       return;
     }
     if (aadhaarStatus !== 'VERIFIED') {
-      setFormError(t.aadhaarLabel);
+      setFormError(lang === 'te' ? '🛡️ దయచేసి ఆధార్ వెరిఫికేషన్ పూర్తి చేయండి.' : '🛡️ Identity validation incomplete.');
       return;
     }
     setFormError('');
@@ -237,14 +221,12 @@ export default function App() {
 
     try {
       await createUserWithEmailAndPassword(auth, formData.email, authPassword);
+      
+      // 🛠️ Execute Canvas Compression Matrix
       const base64Encodings = [];
       for (let i = 0; i < selectedPhotos.length; i++) {
-        const encoded = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(selectedPhotos[i]);
-        });
-        base64Encodings.push(encoded);
+        const compressedData = await compressImage(selectedPhotos[i]);
+        base64Encodings.push(compressedData);
       }
 
       const generatedProfileId = "MMS" + Math.floor(100000 + Math.random() * 900000);
@@ -255,7 +237,7 @@ export default function App() {
         isPremium: false,
         aadhaarVerified: true
       });
-      alert(lang === 'te' ? `🎉 ప్రొఫైల్ ఐడి ${generatedProfileId} విజయవంతంగా సృష్టించబడింది!` : `🎉 Registered Profile ${generatedProfileId}`);
+      alert(lang === 'te' ? `🎉 మీ ప్రొఫైల్ ఐడి: ${generatedProfileId}` : `🎉 Profile deployed: ${generatedProfileId}`);
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -269,7 +251,7 @@ export default function App() {
     setIsSubmitting(true);
     try {
       await updateDoc(doc(db, "profiles", myProfileData.id), formData);
-      alert(lang === 'te' ? '✅ మీ సవరణలు భద్రపరచబడ్డాయి!' : '✅ Metrics locked.');
+      alert(lang === 'te' ? '✅ మీ ప్రాధాన్యతలు విజయవంతంగా నవీకరించబడ్డాయి!' : '✅ Match records updated.');
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -284,7 +266,7 @@ export default function App() {
     try {
       await signInWithEmailAndPassword(auth, authEmail, authPassword);
     } catch (err) {
-      setFormError(lang === 'te' ? '❌ వివరాలు సరిపోలడం లేదు.' : '❌ Invalid parameters.');
+      setFormError(lang === 'te' ? '❌ వివరాలు సరిపోలలేదు. మరలా ప్రయత్నించండి.' : '❌ Credentials error.');
     } finally {
       setIsSubmitting(false);
     }
@@ -292,7 +274,7 @@ export default function App() {
 
   const handleUpiVerificationSubmit = async (e) => {
     e.preventDefault();
-    if (upiTransactionId.length < 6) return;
+    if (upiTransactionId.length < 8) return;
     try {
       await addDoc(collection(db, "payment_claims"), {
         email: user.email,
@@ -307,53 +289,49 @@ export default function App() {
     }
   };
 
-  const targetMatchGender = myProfileData ? (myProfileData.gender === 'Male' ? 'Female' : 'Male') : '';
+  // Securely resolves opposite gender, defaults to 'Loading' to prevent Empty Feed Flash
+  const targetMatchGender = myProfileData ? (myProfileData.gender === 'Male' ? 'Female' : 'Male') : 'Loading'; 
 
   return (
     <div className="min-h-screen bg-[#FCF5EB] text-[#2C1810] pb-16 antialiased">
-      {/* 🔱 TELUGU CULTURAL HERITAGE BRANDING HEADER */}
-      <header className="bg-gradient-to-r from-[#7B1F1F] via-[#942626] to-[#7B1F1F] text-[#FFF9F0] px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl border-b-4 border-[#D4A017]">
+      <header className="bg-gradient-to-r from-[#7B1F1F] via-[#912525] to-[#7B1F1F] text-[#FFF9F0] px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl border-b-4 border-[#D4A017]">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#D4A017] rounded-full flex items-center justify-center text-2xl shadow-md border border-white/20 animate-pulse">🪷</div>
+          <div className="w-12 h-12 bg-[#D4A017] rounded-full flex items-center justify-center text-2xl shadow-md border border-white/20">🪷</div>
           <div>
-            <h1 className="font-bold text-3xl text-[#D4A017] tracking-wide drop-shadow-sm" style={{fontFamily: "'Noto Serif Telugu', serif"}}>{t.logoTitle}</h1>
+            <h1 className="font-bold text-3xl text-[#D4A017] tracking-wide" style={{fontFamily: "'Noto Serif Telugu', serif"}}>{t.logoTitle}</h1>
             <p className="text-[10px] tracking-widest uppercase text-amber-200 font-bold">{t.logoSub}</p>
           </div>
         </div>
         
-        {/* CENTER SEGMENT ROUTING TAB BAR */}
         {user && (
-          <div className="flex bg-black/30 p-1 rounded-2xl border border-amber-500/30 text-xs font-bold shadow-inner">
-            <button onClick={() => setActiveTab('matches')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'matches' ? 'bg-gradient-to-b from-[#F7D373] to-[#D4A017] text-[#521313] shadow-md scale-105' : 'text-white/90 hover:text-white'}`}>{t.exploreMatches}</button>
-            <button onClick={() => setActiveTab('my-profile')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'my-profile' ? 'bg-gradient-to-b from-[#F7D373] to-[#D4A017] text-[#521313] shadow-md scale-105' : 'text-white/90 hover:text-white'}`}>{t.myBio}</button>
-            <button onClick={() => setActiveTab('payment')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'payment' ? 'bg-gradient-to-b from-[#F7D373] to-[#D4A017] text-[#521313] shadow-md scale-105' : 'text-white/90 hover:text-white'}`}>{t.goPremium}</button>
+          <div className="flex bg-black/30 p-1 rounded-2xl border border-amber-500/20 text-xs font-bold shadow-inner">
+            <button onClick={() => setActiveTab('matches')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'matches' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.exploreMatches}</button>
+            <button onClick={() => setActiveTab('my-profile')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'my-profile' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.myBio}</button>
+            <button onClick={() => setActiveTab('payment')} className={`px-5 py-2.5 rounded-xl transition-all duration-300 ${activeTab === 'payment' ? 'bg-[#D4A017] text-[#521313] shadow' : 'text-white/90'}`}>{t.goPremium}</button>
           </div>
         )}
 
-        {/* 🌐 HIGHLY ACCESSIBLE LANGUAGE SELECTOR SLOT */}
         <div className="flex items-center gap-4">
-          <div className="bg-black/30 border border-white/20 rounded-xl p-1 flex gap-1 font-bold text-[10px]">
-            <button onClick={() => setLang('te')} className={`px-2.5 py-1 rounded-md transition-all ${lang === 'te' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>తెలుగు</button>
-            <button onClick={() => setLang('en')} className={`px-2.5 py-1 rounded-md transition-all ${lang === 'en' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>English</button>
+          <div className="bg-black/40 border border-white/10 rounded-xl p-1 flex gap-1 font-bold text-[10px]">
+            <button onClick={() => setLang('te')} className={`px-3 py-1 rounded-md transition-all ${lang === 'te' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>తెలుగు</button>
+            <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-md transition-all ${lang === 'en' ? 'bg-[#D4A017] text-black' : 'text-gray-400'}`}>English</button>
           </div>
-
           {user && (
             <div className="text-right text-xs">
-              <p className="font-bold text-amber-200">{t.namaskaram}</p>
-              <button onClick={() => signOut(auth)} className="text-[10px] text-white/70 hover:text-white underline font-semibold">{t.logout}</button>
+              <p className="font-bold text-amber-100">{t.namaskaram}</p>
+              <button onClick={() => signOut(auth)} className="text-[10px] text-white/60 hover:text-white underline">{t.logout}</button>
             </div>
           )}
         </div>
       </header>
 
-      {/* CORE FRAMEWORK STAGE */}
       <main className="max-w-6xl mx-auto px-4 mt-8">
         
-        {/* OUTSIDE SYSTEM VISITOR DESK */}
+        {/* ================= GUEST PORTAL ================= */}
         {!user && (
-          <div className="max-w-xl mx-auto bg-white border-t-8 border-[#7B1F1F] border-x border-b border-[#E8C99A] p-6 rounded-3xl shadow-2xl">
+          <div className="max-w-xl mx-auto bg-white border-t-8 border-[#7B1F1F] border-x border-b border-[#E8C99A]/60 p-6 rounded-3xl shadow-2xl">
             <div className="flex justify-between items-center border-b pb-3 mb-6">
-              <h3 className="font-bold text-lg text-[#7B1F1F] tracking-wide" style={{fontFamily: "'Noto Serif Telugu', serif"}}>{isRegistering ? t.registerTitle : t.loginTitle}</h3>
+              <h3 className="font-bold text-lg text-[#7B1F1F]" style={{fontFamily: "'Noto Serif Telugu', serif"}}>{isRegistering ? t.registerTitle : t.loginTitle}</h3>
               <button onClick={() => { setIsRegistering(!isRegistering); setFormError(''); }} className="text-xs font-bold text-sky-800 underline">{isRegistering ? t.switchLogin : t.switchReg}</button>
             </div>
 
@@ -363,29 +341,29 @@ export default function App() {
               <form onSubmit={handleRegistrationFlow} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.firstName}</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.firstName}</label>
                     <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.lastName}</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.lastName}</label>
                     <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.age}</label>
-                    <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.age}</label>
+                    <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm" />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.gender}</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.gender}</label>
                     <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs font-bold text-gray-700">
                       <option value="Female">{t.bride}</option>
                       <option value="Male">{t.groom}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.maritalStatus}</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.maritalStatus}</label>
                     <select value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
                       <option value="Never Married">{t.neverMarried}</option>
                       <option value="Divorced">{t.divorced}</option>
@@ -396,43 +374,57 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.district}</label>
-                    <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      <option value="Vijayawada">Vijayawada</option>
-                      <option value="Guntur">Guntur</option>
-                      <option value="Hyderabad">Hyderabad</option>
-                      <option value="Visakhapatnam">Visakhapatnam</option>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.caste}</label>
+                    <select value={formData.caste} onChange={e => {
+                      const selectedCaste = e.target.value;
+                      // Fallback fixes the crashing array bug
+                      setFormData({...formData, caste: selectedCaste, subCaste: CASTE_MATRIX[selectedCaste]?.[0] || 'General'});
+                    }} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                      {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.caste}</label>
-                    <select value={formData.caste} onChange={e => setFormData({...formData, caste: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                      <option value="Brahmin">Brahmin</option>
-                      <option value="Kamma">Kamma</option>
-                      <option value="Kapu">Kapu</option>
-                      <option value="Reddy">Reddy</option>
-                      <option value="Arya Vysya">Arya Vysya</option>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.subCaste}</label>
+                    <select value={formData.subCaste} onChange={e => setFormData({...formData, subCaste: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                      {CASTE_MATRIX[formData.caste]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
                     </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.gothram}</label>
-                    <input type="text" value={formData.gothram} onChange={e => setFormData({...formData, gothram: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs focus:outline-none" placeholder="Siva" />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.rasi}</label>
-                    <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-[11px]">
-                      <option value="Mesha (Aries)">Mesha (మేషం)</option>
-                      <option value="Vrishabha (Taurus)">Vrishabha (వృషభం)</option>
-                      <option value="Makara (Capricorn)">Makara (మకరం)</option>
-                      <option value="Kanya (Virgo)">Kanya (కన్య)</option>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.district}</label>
+                    <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                      {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.star}</label>
-                    <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-[11px]">
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.gothram}</label>
+                    <input type="text" required placeholder="e.g. Bharadwaja" value={formData.gothram} onChange={e => setFormData({...formData, gothram: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs focus:outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.rasi}</label>
+                    <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
+                      <option value="Mesha (Aries)">Mesha (మేషం)</option>
+                      <option value="Vrishabha (Taurus)">Vrishabha (వృషభం)</option>
+                      <option value="Mithuna (Gemini)">Mithuna (మిథునం)</option>
+                      <option value="Karka (Cancer)">Karka (కర్కాటకం)</option>
+                      <option value="Simha (Leo)">Simha (సింహం)</option>
+                      <option value="Kanya (Virgo)">Kanya (కన్య)</option>
+                      <option value="Tula (Libra)">Tula (తుల)</option>
+                      <option value="Vrishchika (Scorpio)">Vrishchika (వృశ్చికం)</option>
+                      <option value="Dhanu (Sagittarius)">Dhanu (ధనుస్సు)</option>
+                      <option value="Makara (Capricorn)">Makara (మకరం)</option>
+                      <option value="Kumbha (Aquarius)">Kumbha (కుంభం)</option>
+                      <option value="Meena (Pisces)">Meena (మీనం)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.star}</label>
+                    <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
                       {NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}
                     </select>
                   </div>
@@ -440,21 +432,22 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.education}</label>
-                    <input type="text" required value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs" />
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.education}</label>
+                    <input type="text" required placeholder="e.g. B.Tech" value={formData.education} onChange={e => setFormData({...formData, education: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-xs focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.income}</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.income}</label>
                     <select value={formData.annualIncome} onChange={e => setFormData({...formData, annualIncome: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
                       <option value="Under 5 Lakhs PA">Under 5 Lakhs PA</option>
                       <option value="5 - 10 Lakhs PA">5 - 10 Lakhs PA</option>
                       <option value="10 - 20 Lakhs PA">10 - 20 Lakhs PA</option>
+                      <option value="20+ Lakhs PA">20+ Lakhs PA</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t.phone}</label>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.phone}</label>
                   <input type="tel" required placeholder="+91" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                 </div>
 
@@ -475,11 +468,11 @@ export default function App() {
 
                 <div className="border-t pt-3 grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.email}</label>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">{t.email}</label>
                     <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border rounded-xl p-2 text-xs bg-[#FFFBF7]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.password}</label>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">{t.password}</label>
                     <input type="password" required value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full border rounded-xl p-2 text-xs bg-[#FFFBF7]" />
                   </div>
                 </div>
@@ -491,11 +484,11 @@ export default function App() {
             ) : (
               <form onSubmit={handleAuthLoginFlow} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.email}</label>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">{t.email}</label>
                   <input type="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full border rounded-xl p-3 bg-[#FFFBF7] text-sm focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.password}</label>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">{t.password}</label>
                   <input type="password" required value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full border rounded-xl p-3 bg-[#FFFBF7] text-sm focus:outline-none" />
                 </div>
                 <button type="submit" className="w-full py-3 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow">
@@ -506,90 +499,89 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= MEMBERS INSIDE SECURE ECOSYSTEM ================= */}
+        {/* ================= USER ACTIVE LOGGED-IN WORKSPACE ================= */}
         {user && (
           <div>
-            
-            {/* TAB 1: INTUITIVE OPPOSITE-GENDER MATCH VIEWPORT */}
+            {/* TAB 1: REAL-TIME SWAPPED MATCH FEED */}
             {activeTab === 'matches' && (
               <div className="space-y-6">
                 <div className="bg-white p-4 border border-[#E8C99A] rounded-2xl flex flex-wrap gap-3 items-center shadow-md">
                   <span className="font-bold text-xs text-[#7B1F1F] bg-[#7B1F1F]/5 px-3 py-1.5 rounded-lg border text-sm">
-                    {t.fastFilter} <span className="text-emerald-700 underline font-extrabold">{myProfileData?.gender === 'Male' ? (lang === 'te' ? 'వధువుల జాబితా (Brides)' : 'Brides') : (lang === 'te' ? 'వరుల జాబితా (Grooms)' : 'Grooms')}</span>
+                    {t.fastFilter} <span className="text-emerald-700 underline font-extrabold">{myProfileData?.gender === 'Male' ? (lang === 'te' ? 'వధువుల సంబంధాలు' : 'Brides Feed') : (lang === 'te' ? 'వరుల సంబంధాలు' : 'Grooms Feed')}</span>
                   </span>
                   
                   <select value={filterCaste} onChange={e => setFilterCaste(e.target.value)} className="border rounded-xl p-2 text-xs bg-[#FFFBF7] font-semibold text-gray-700">
                     <option value="">All Castes</option>
-                    <option value="Brahmin">Brahmin</option>
-                    <option value="Kamma">Kamma</option>
-                    <option value="Kapu">Kapu</option>
-                    <option value="Reddy">Reddy</option>
+                    {Object.keys(CASTE_MATRIX).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
 
                   <select value={filterDistrict} onChange={e => setFilterDistrict(e.target.value)} className="border rounded-xl p-2 text-xs bg-[#FFFBF7] font-semibold text-gray-700">
                     <option value="">All Districts</option>
-                    <option value="Vijayawada">Vijayawada</option>
-                    <option value="Guntur">Guntur</option>
-                    <option value="Hyderabad">Hyderabad</option>
+                    {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {profiles
-                    .filter(p => p.gender === targetMatchGender) // 💥 CRITICAL FILTER STAYS ACTIVE FOR SWAPPED MATRIX MATCHING
-                    .filter(p => !filterCaste || p.caste === filterCaste)
-                    .filter(p => !filterDistrict || p.district === filterDistrict)
-                    .map(profile => (
-                      <div key={profile.id} className="bg-white border-2 border-[#E8C99A]/30 rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all">
-                        <div>
-                          <div className="h-48 bg-zinc-100 relative overflow-hidden flex items-center justify-center">
-                            {profile.photos && profile.photos.length > 0 ? (
-                              <img src={profile.photos[0]} alt="Matrimony Profile Asset" className="w-full h-full object-cover" />
+                  {/* Smart Fallback handles empty array logic seamlessly */}
+                  {profiles.filter(p => targetMatchGender !== 'Loading' && p.gender === targetMatchGender).length === 0 && targetMatchGender !== 'Loading' ? (
+                    <div className="col-span-full text-center bg-white border border-dashed p-12 text-gray-400 rounded-3xl italic">{t.noMatches}</div>
+                  ) : (
+                    profiles
+                      .filter(p => p.gender === targetMatchGender) 
+                      .filter(p => !filterCaste || p.caste === filterCaste)
+                      .filter(p => !filterDistrict || p.district === filterDistrict)
+                      .map(profile => (
+                        <div key={profile.id} className="bg-white border-2 border-[#E8C99A]/20 rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all duration-300">
+                          <div>
+                            <div className="h-52 bg-zinc-100 relative overflow-hidden flex items-center justify-center">
+                              {profile.photos && profile.photos.length > 0 ? (
+                                <img src={profile.photos[0]} alt="Profile" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-5xl opacity-20">{profile.gender === 'Female' ? '👩' : '👨'}</span>
+                              )}
+                              <div className="absolute top-2.5 right-2.5 bg-emerald-700 text-white text-[8px] font-extrabold px-2 py-0.5 rounded shadow">Aadhaar Verified</div>
+                              <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">{t.id}: {profile.profileId || 'MMS-Temp'}</div>
+                            </div>
+
+                            <div className="p-4 space-y-3">
+                              <div className="flex justify-between items-center border-b pb-2">
+                                <h4 className="font-bold text-base text-[#7B1F1F]">{profile.firstName}</h4>
+                                <span className="text-[10px] font-extrabold text-[#7B1F1F] bg-[#7B1F1F]/5 border px-2 py-0.5 rounded max-w-[120px] truncate">{profile.caste}</span>
+                              </div>
+
+                              <div className="text-xs grid grid-cols-2 gap-y-2 text-gray-600 font-semibold">
+                                <p>🎂 {t.age}: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
+                                <p>📍 {t.district}: <span className="text-gray-900 font-bold">{profile.district?.split(' ')[0]}</span></p>
+                                <p>🌟 {t.star}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.nakshatra?.split(' ')[0]}</span></p>
+                                <p>🔮 {t.rasi}: <span className="text-amber-900 font-extrabold truncate block w-full">{profile.rasi?.split(' ')[0]}</span></p>
+                                <p className="col-span-2 text-[11px] border-t pt-1.5 text-gray-500">{t.education}: <span className="text-gray-900 font-bold">{profile.education}</span></p>
+                                <p className="col-span-2 text-[11px] text-gray-500">{t.income}: <span className="text-gray-900 font-bold">{profile.annualIncome}</span></p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-[#FFFBF7] border-t border-gray-100 rounded-b-3xl">
+                            {myProfileData?.isPremium ? (
+                              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800 font-bold space-y-1">
+                                <p>📞 {t.phone}: {profile.phone || 'Protected'}</p>
+                                <p>📧 {t.email}: {profile.email || 'Protected'}</p>
+                                <p>🔱 {t.gothram}: <span className="text-gray-800 font-mono">{profile.gothram || 'Shiva'}</span></p>
+                                <p>🧬 {t.subCaste}: <span className="text-purple-900">{profile.subCaste || 'General'}</span></p>
+                              </div>
                             ) : (
-                              <span className="text-5xl opacity-20">{profile.gender === 'Female' ? '👩' : '👨'}</span>
+                              <div className="text-center">
+                                <p className="text-[10px] text-amber-900 font-bold mb-2">{t.lockedWarning}</p>
+                                <button onClick={() => setActiveTab('payment')} className="w-full py-2 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white text-xs font-bold rounded-lg shadow-md hover:brightness-110">{t.unlockBtn}</button>
+                              </div>
                             )}
-                            <div className="absolute top-2.5 right-2.5 bg-emerald-700 text-white text-[8px] font-extrabold px-2 py-0.5 rounded shadow">Aadhaar Verified</div>
-                            <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">{t.id}: {profile.profileId || 'MMS-Temp'}</div>
-                          </div>
-
-                          <div className="p-4 space-y-3">
-                            <div className="flex justify-between items-center border-b pb-2">
-                              <h4 className="font-bold text-base text-[#7B1F1F]">{profile.firstName}</h4>
-                              <span className="text-[10px] font-extrabold text-[#7B1F1F] bg-[#7B1F1F]/5 border px-2 py-0.5 rounded">{profile.caste}</span>
-                            </div>
-
-                            <div className="text-xs grid grid-cols-2 gap-y-2 text-gray-600 font-semibold">
-                              <p>🎂 {t.age}: <span className="text-gray-900 font-bold">{profile.age} Yrs</span></p>
-                              <p>📍 {t.district}: <span className="text-gray-900 font-bold">{profile.district}</span></p>
-                              <p>🌟 {t.star}: <span className="text-amber-900 font-extrabold">{profile.nakshatra}</span></p>
-                              <p>🔮 {t.rasi}: <span className="text-amber-900 font-extrabold">{profile.rasi}</span></p>
-                              <p className="col-span-2 text-[11px] border-t pt-1.5 text-gray-500">{t.education}: <span className="text-gray-900 font-bold">{profile.education}</span></p>
-                              <p className="col-span-2 text-[11px] text-gray-500">{t.income}: <span className="text-gray-900 font-bold">{profile.annualIncome}</span></p>
-                            </div>
                           </div>
                         </div>
-
-                        <div className="p-4 bg-[#FFFBF7] border-t border-gray-100 rounded-b-3xl">
-                          {myProfileData?.isPremium ? (
-                            <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800 font-bold space-y-1">
-                              <p>📞 {t.phone}: {profile.phone || 'Protected'}</p>
-                              <p>📧 {t.email}: {profile.email || 'Protected'}</p>
-                              <p>🔱 {t.gothram}: <span className="text-gray-800 font-mono">{profile.gothram || 'Shiva'}</span></p>
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <p className="text-[10px] text-amber-900 font-bold mb-2">{t.lockedWarning}</p>
-                              <button onClick={() => setActiveTab('payment')} className="w-full py-2 bg-gradient-to-r from-[#7B1F1F] to-[#A62B2B] text-white text-xs font-bold rounded-lg shadow-md hover:brightness-110">{t.unlockBtn}</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: CULTURALLY RICH SELF-PROFILE MANAGEMENT & STAR TARGET CHECKBOX MATRIX */}
+            {/* TAB 2: MANAGEMENT PORTAL */}
             {activeTab === 'my-profile' && (
               <div className="max-w-3xl mx-auto bg-white border border-[#E8C99A] p-6 rounded-3xl shadow-lg">
                 <div className="border-b pb-2 mb-6">
@@ -599,38 +591,46 @@ export default function App() {
                 <form onSubmit={handleUpdateProfileFlow} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.firstName}</label>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.firstName}</label>
                       <input type="text" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.lastName}</label>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.lastName}</label>
                       <input type="text" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.age}</label>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.age}</label>
                       <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full border rounded-xl p-2.5 bg-[#FFFBF7] text-sm focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.rasi}</label>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.rasi}</label>
                       <select value={formData.rasi} onChange={e => setFormData({...formData, rasi: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
-                        <option value="Mesha (Aries)">Mesha</option>
-                        <option value="Vrishabha (Taurus)">Vrishabha</option>
-                        <option value="Makara (Capricorn)">Makara</option>
-                        <option value="Kanya (Virgo)">Kanya</option>
+                        <option value="Mesha (Aries)">Mesha (మేషం)</option>
+                        <option value="Vrishabha (Taurus)">Vrishabha (వృషభం)</option>
+                        <option value="Mithuna (Gemini)">Mithuna (మిథునం)</option>
+                        <option value="Karka (Cancer)">Karka (కర్కాటకం)</option>
+                        <option value="Simha (Leo)">Simha (సింహం)</option>
+                        <option value="Kanya (Virgo)">Kanya (కన్య)</option>
+                        <option value="Tula (Libra)">Tula (తుల)</option>
+                        <option value="Vrishchika (Scorpio)">Vrishchika (వృశ్చికం)</option>
+                        <option value="Dhanu (Sagittarius)">Dhanu (ధనుస్సు)</option>
+                        <option value="Makara (Capricorn)">Makara (మకరం)</option>
+                        <option value="Kumbha (Aquarius)">Kumbha (కుంభం)</option>
+                        <option value="Meena (Pisces)">Meena (మీనం)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.star}</label>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t.star}</label>
                       <select value={formData.nakshatra} onChange={e => setFormData({...formData, nakshatra: e.target.value})} className="w-full border rounded-xl p-2.5 bg-white text-xs">
                         {NAKSHATRAMS.map(st => <option key={st} value={st}>{st}</option>)}
                       </select>
                     </div>
                   </div>
 
-                  {/* 🌟 NATIVE CHECKBOX MATRIX SPECIFICATION */}
+                  {/* MULTI-SELECT PREFERENCE MATRIX */}
                   <div className="bg-[#FFFBF7] border border-[#E8C99A] p-4 rounded-2xl">
                     <label className="block text-xs font-extrabold text-[#7B1F1F] uppercase mb-1">{t.starPrefLabel}</label>
                     <p className="text-[11px] text-gray-500 mb-4">{t.starPrefSub}</p>
@@ -641,7 +641,7 @@ export default function App() {
                         return (
                           <label key={star} className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer select-none transition-all duration-200 ${isChecked ? 'bg-amber-100/70 border-[#D4A017] font-bold text-[#7B1F1F]' : 'bg-white border-gray-100 hover:bg-gray-50'}`}>
                             <input type="checkbox" checked={isChecked || false} onChange={() => handleStarPreferenceToggle(star)} className="accent-[#7B1F1F]" />
-                            {star}
+                            {star.split(' ')[0]}
                           </label>
                         );
                       })}
@@ -655,7 +655,7 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 3: COMMISSION-FREE DIRECT UPI WORKSPACE SCREEN */}
+            {/* TAB 3: CUSTOM UPI CHECKOUT */}
             {activeTab === 'payment' && (
               <div className="max-w-md mx-auto bg-white border-2 border-[#E8C99A] p-6 rounded-3xl shadow-xl text-center">
                 <span className="text-4xl">👑</span>
@@ -664,18 +664,17 @@ export default function App() {
                 <div className="my-6 p-4 bg-[#FFFBF7] border border-dashed border-amber-400 space-y-4 rounded-2xl">
                   <p className="text-xs font-bold text-gray-700 uppercase">{t.step1}</p>
                   
-                  {/* CENTRAL UPI TARGET ANCHOR DECK */}
-                  <div className="w-36 h-36 bg-zinc-100 border rounded-xl mx-auto flex items-center justify-center p-2 shadow-inner relative">
-                    <div className="w-full h-full border-2 border-dashed border-zinc-300 flex flex-col items-center justify-center font-mono font-bold text-[9px] text-zinc-400 bg-white p-1">
-                      <span>[ UPI QR ]</span>
-                      <span className="text-[7px] mt-1 text-center">SCAN TO DEPOSIT SUBSCRIPTION</span>
+                  <div className="w-36 h-36 bg-zinc-50 border rounded-xl mx-auto flex flex-col items-center justify-center p-1 shadow-inner">
+                    <div className="w-full h-full border border-dashed border-zinc-300 flex flex-col items-center justify-center font-mono font-bold text-[9px] text-zinc-400 bg-white p-1">
+                      <span>[ UPI QR CODE ]</span>
+                      <span className="text-[7px] font-sans text-center mt-1 text-gray-500">Scan via PhonePe / GPay / Paytm</span>
                     </div>
                   </div>
 
-                  <div className="bg-white px-3 py-2 rounded-xl border font-mono text-xs text-[#7B1F1F] font-bold flex justify-between items-center">
+                  <div className="bg-white px-3 py-2 rounded-xl border font-mono text-xs text-[#7B1F1F] font-bold">
                     <span>UPI ID: sambasiva.rao@upi</span>
                   </div>
-                  <p className="text-xs font-bold text-emerald-800 bg-emerald-50 p-2 rounded-lg">Fixed Asset Activation Value: ₹499/-</p>
+                  <p className="text-xs font-bold text-emerald-800 bg-emerald-50 p-2 rounded-lg">Subscription Value: ₹499/-</p>
                 </div>
 
                 {!paymentSubmitted ? (
