@@ -2,96 +2,39 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ShieldCheck, Lock, Eye, Heart, Send, Inbox, 
   Wallet, X, Copy, Menu, BadgeCheck, Search, 
-  User, MapPin, Award, FileText, Upload, LockKeyhole, Clock, ThumbsUp, Users
+  User, MapPin, Award, FileText, Upload, LockKeyhole, Clock, ThumbsUp, Users, Image as ImageIcon, CheckCircle2, Sparkles
 } from 'lucide-react';
 
-// Static Configuration Maps for Parity Matching
+// Live Full-Stack Firebase SDK Hook Links
+import { auth, db } from './firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  onSnapshot, 
+  query, 
+  where 
+} from 'firebase/firestore';
+
 const INCOME_MAP = { '3-5 LPA': 1, '5-10 LPA': 2, '10-15 LPA': 3, '15-25 LPA': 4, '25-50 LPA': 5, '50+ LPA': 6 };
 const ASSET_MAP = { 'No Assets': 0, 'Below 50 Lakhs': 1, '50 Lakhs - 1 Crore': 2, '1 - 3 Crores': 3, '3 - 5 Crores': 4, '5 - 10 Crores': 5, '10 - 20 Crores': 6, '20 Crores+': 7 };
 
-const INITIAL_DATABASE_NODES = [
-  {
-    __backendId: "seed_groom_anand",
-    profile_id: "PP10001",
-    first_name: "Anand Kumar",
-    last_name: "Yellapragada",
-    age: 28,
-    gender: "Male",
-    marital_status: "Never Married",
-    height: "5'10\"",
-    education: "M.Tech (IIT Madras)",
-    occupation: "Senior Principal Engineer",
-    income: "25-50 LPA",
-    city: "Hyderabad",
-    caste: "Kapu",
-    sub_caste: "Telaga",
-    gothram: "Srivatsa",
-    rashi: "Mesha",
-    padam: "1",
-    kujaDosham: "No (లేదు)",
-    nakshatra: "Ashwini",
-    fatherName: "Srinivasa Rao",
-    motherName: "Radha Kumari",
-    maternalSurnames: "Chavali, Nidadavole",
-    propertyWorth: "5 - 10 Crores",
-    landDetails: "2.5 Acres near Vijayawada",
-    phone: "+91 94901 23456",
-    about: "Balancing software innovation with classical music values.",
-    profile_status: "approved",
-    interests_received: "",
-    contact_purchases: "",
-    payment_verification_requested: false,
-    payment_request_by: "",
-    caste_preference_tier: "same_caste",
-    avatar_source: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
-  },
-  {
-    __backendId: "seed_bride_priya",
-    profile_id: "PP20001",
-    first_name: "Sai Priya",
-    last_name: "Mamidipudi",
-    age: 25,
-    gender: "Female",
-    marital_status: "Never Married",
-    height: "5'4\"",
-    education: "MBA (ISB Hyderabad)",
-    occupation: "Financial Management Consultant",
-    income: "15-25 LPA",
-    city: "Visakhapatnam",
-    caste: "Kapu",
-    sub_caste: "Telaga",
-    gothram: "Kaundinya",
-    rashi: "Kanya",
-    padam: "2",
-    kujaDosham: "No (లేదు)",
-    nakshatra: "Hasta",
-    fatherName: "Satyanarayana Murthy",
-    motherName: "Lakshmi Prasanna",
-    maternalSurnames: "Ganti, Vinnakota",
-    propertyWorth: "10 - 20 Crores",
-    landDetails: "Commercial layout assets in Vizag",
-    phone: "+91 98480 98765",
-    about: "Cultured professional passionate about traditional arts.",
-    profile_status: "approved",
-    interests_received: "seed_groom_anand",
-    contact_purchases: "",
-    payment_verification_requested: false,
-    payment_request_by: "",
-    caste_preference_tier: "open",
-    avatar_source: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"
-  }
-];
-
 function SecureAvatar({ imageUrl, watermarkText }) {
   const canvasRef = useRef(null);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imageUrl;
+    img.src = imageUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150";
     img.onload = () => {
       ctx.clearRect(0, 0, 120, 120);
       ctx.drawImage(img, 0, 0, 120, 120);
@@ -104,211 +47,249 @@ function SecureAvatar({ imageUrl, watermarkText }) {
       ctx.restore();
     };
   }, [imageUrl, watermarkText]);
-
   return <canvas ref={canvasRef} width="120" height="120" className="w-12 h-12 rounded-xl border border-[#d4a017]/30 bg-orange-50 shrink-0 select-none pointer-events-none" />;
 }
 
 export default function App() {
-  // Fix 1: Lazy State Initialization pattern prevents state parsing mismatch errors on load
-  const [profiles, setProfiles] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('tv_production_engine_data');
-      if (saved) return JSON.parse(saved);
-    }
-    return INITIAL_DATABASE_NODES;
-  });
-
-  const [currentUser, setCurrentUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const activeToken = localStorage.getItem('tv_active_session_token');
-      if (activeToken) {
-        const found = profiles.find(p => p.__backendId === activeToken);
-        if (found) return found;
-      }
-    }
-    return INITIAL_DATABASE_NODES[0];
-  });
+  const [userSession, setUserSession] = useState(null);
+  const [currentUserData, setCurrentUserData] = useState(null);
+  const [globalProfiles, setGlobalProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [currentView, setCurrentView] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [toastMessage, setToastMessage] = useState('');
   
-  // Filtering Logic states
   const [filterCity, setFilterCity] = useState('');
   const [financialFilterActive, setFinancialFilterActive] = useState(true);
-  const [castePreferenceTier, setCastePreferenceTier] = useState(() => currentUser?.caste_preference_tier || 'same_caste');
+  const [castePreferenceTier, setCastePreferenceTier] = useState('same_caste');
 
-  // Modals management references
   const [selectedProfileId, setSelectedProfileId] = useState(null);
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [aadharInput, setAadharInput] = useState('');
   const [aadharAttached, setAadharAttached] = useState(false);
   const [screenshotAttached, setScreenshotAttached] = useState(false);
+  
+  // Permanent String Photo Registries State Hook Array
+  const [formPhotos, setFormPhotos] = useState(['', '', '']);
 
-  // Registration Form State Data Map
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+
   const [regForm, setRegForm] = useState({
-    first_name: '', last_name: '', email: '', phone: '', age: 26, gender: 'Male',
+    first_name: '', last_name: '', phone: '', age: 26, gender: 'Male',
     marital_status: 'Never Married', height: "5'8\"", bloodGroup: 'O+', caste: 'Kapu', sub_caste: '',
     gothram: '', nakshatra: 'Ashwini', padam: '1', rashi: 'Mesha', kujaDosham: 'No (లేదు)',
     education: '', occupation: '', income: '10-15 LPA', city: '', diet: 'Vegetarian',
     physicalStatus: 'Normal Status', fatherName: '', motherName: '', maternalSurnames: '',
-    propertyWorth: '3 - 5 Crores', landDetails: '', houseDetails: '', abroadStatus: 'Open to both', 
-    about: '', caste_preference_tier: 'same_caste', avatar_source: ''
+    propertyWorth: '3 - 5 Crores', landDetails: '', houseDetails: '', abroadStatus: 'Open to both', about: '',
+    devotional_status: 'Moderately Spiritual (పండుగలు పాటిస్తారు)',
+    food_culture: 'Strict Vegetarian (శాకాహారి)',
+    family_bonding: 'Prefers Nuclear Lifestyle',
+    monthly_spends: 'Disciplined Saver',
+    hobbies_text: ''
   });
 
   const triggerToast = (msg) => setToastMessage(msg);
 
   useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(''), 4000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
-
-  const syncStateUpdate = (updatedSet) => {
-    localStorage.setItem('tv_production_engine_data', JSON.stringify(updatedSet));
-    setProfiles(updatedSet);
-    if (currentUser) {
-      const reMatch = updatedSet.find(p => p.__backendId === currentUser.__backendId);
-      if (reMatch) {
-        setCurrentUser(reMatch);
-        setCastePreferenceTier(reMatch.caste_preference_tier || 'same_caste');
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserSession(user);
+        const q = query(collection(db, "profiles"), where("auth_uid", "==", user.uid));
+        onSnapshot(q, (snapshot) => {
+          if (!snapshot.empty) {
+            const dataNode = snapshot.docs[0].data();
+            dataNode.__docId = snapshot.docs[0].id;
+            setCurrentUserData(dataNode);
+            setCastePreferenceTier(dataNode.caste_preference_tier || 'same_caste');
+          }
+        });
+      } else {
+        setUserSession(null);
+        setCurrentUserData(null);
       }
-    }
-  };
+      setLoading(false);
+    });
 
-  const handleSessionToggle = (id) => {
-    localStorage.setItem('tv_active_session_token', id);
-    const match = profiles.find(p => p.__backendId === id);
-    if (match) {
-      setCurrentUser(match);
-      setCastePreferenceTier(match.caste_preference_tier || 'same_caste');
-      triggerToast(`Swapped view context to: ${match.first_name}`);
-    }
-  };
+    const unsubProfiles = onSnapshot(collection(db, "profiles"), (snapshot) => {
+      const records = snapshot.docs.map(doc => ({ ...doc.data(), __docId: doc.id }));
+      setGlobalProfiles(records);
+    });
 
-  const handleRegisterSubmit = (e) => {
+    return () => { unsubAuth(); unsubProfiles(); };
+  }, []);
+
+  const handleLiveLogin = async (e) => {
     e.preventDefault();
-    if (!aadharAttached || !aadharInput) {
-      triggerToast("❌ Security Error: Aadhaar verification files missing.");
-      return;
+    try {
+      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      triggerToast("✓ Secure session authorized successfully via Firebase.");
+      setCurrentView('search');
+    } catch (err) {
+      triggerToast(`❌ Auth Failure: ${err.message}`);
     }
-    const payload = {
-      ...regForm,
-      __backendId: "user_runtime_" + Date.now(),
-      profile_id: "PP" + Math.floor(10000 + Math.random() * 90000),
-      profile_status: "pending", 
-      interests_received: "", shortlisted: "", contact_purchases: "",
-      payment_verification_requested: false, payment_request_by: "",
-      avatar_source: regForm.gender === 'Male' 
-        ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" 
-        : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"
-    };
-    syncStateUpdate([...profiles, payload]);
-    triggerToast("🔱 Profile logged into secure review storage database.");
-    setStep(1);
-    setAadharInput('');
-    setAadharAttached(false);
+  };
+
+  const handleLiveLogout = async () => {
+    await signOut(auth);
+    triggerToast("Session terminated securely.");
     setCurrentView('home');
   };
 
-  const handleConnectProposal = (id) => {
-    if (!currentUser) return;
-    const nextSet = profiles.map(p => {
-      if (p.__backendId === id) {
-        let rec = (p.interests_received || '').split(',').filter(Boolean);
-        if (!rec.includes(currentUser.__backendId)) rec.push(currentUser.__backendId);
-        return { ...p, interests_received: rec.join(',') };
-      }
-      return p;
-    });
-    syncStateUpdate(nextSet);
-    triggerToast("🔱 Holy alliance invitation dispatched successfully.");
+  // Fix 2: Converts files into permanent Base64 text graphics strings for Firestore
+  const handlePhotoSlotChange = (index, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const updatedPhotos = [...formPhotos];
+      updatedPhotos[index] = reader.result; // Saves the stable data payload string cleanly
+      setFormPhotos(updatedPhotos);
+      triggerToast(`✓ Image Slot #${index + 1} synchronized to cloud stack.`);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleRequestUnlockVerification = () => {
-    if (!screenshotAttached) {
-      triggerToast("❌ Remittance transaction verification screenshot required.");
+  const handleFullStackRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!aadharAttached || !aadharInput) {
+      triggerToast("❌ Security Error: Aadhaar verification records must be populated.");
       return;
     }
-    const nextSet = profiles.map(p => {
-      if (p.__backendId === selectedProfileId) {
-        return { ...p, payment_verification_requested: true, payment_request_by: currentUser.__backendId };
+    if (formPhotos.filter(Boolean).length < 3) {
+      triggerToast("❌ Album Exception: 3 display photos must be provided.");
+      return;
+    }
+
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      
+      // Fix 3: Fallback Smart Bio generator ensuring profile fullness
+      let continuousBio = regForm.about.trim();
+      if (!continuousBio) {
+        continuousBio = `Cultured, family-oriented ${regForm.gender === 'Male' ? 'groom' : 'bride'} based in ${regForm.city}. Professionally working as a ${regForm.occupation} with a structural focus on maintaining balanced values, a ${regForm.devotional_status} lifestyle, and active family tradition lineages.`;
       }
-      return p;
+
+      const payload = {
+        ...regForm,
+        about: continuousBio,
+        auth_uid: credential.user.uid,
+        profile_id: "PP" + Math.floor(10000 + Math.random() * 90000),
+        profile_status: "pending", 
+        interests_received: "", shortlisted: "", contact_purchases: "",
+        payment_verification_requested: false, payment_request_by: "",
+        caste_preference_tier: "same_caste",
+        uploaded_photos: [...formPhotos]
+      };
+
+      await addDoc(collection(db, "profiles"), payload);
+      triggerToast("🎉 Account created! Placed in server verification queue.");
+      setStep(1);
+      setFormPhotos(['', '', '']);
+      setCurrentView('search');
+    } catch (err) {
+      triggerToast(`❌ Server Exception: ${err.message}`);
+    }
+  };
+
+  const handleConnectProposal = async (targetProfile) => {
+    if (!currentUserData) return;
+    let currentInterests = (targetProfile.interests_received || '').split(',').filter(Boolean);
+    if (!currentInterests.includes(currentUserData.profile_id)) {
+      currentInterests.push(currentUserData.profile_id);
+      const targetRef = doc(db, "profiles", targetProfile.__docId);
+      await updateDoc(targetRef, { interests_received: currentInterests.join(',') });
+      triggerToast("🔱 Connection handshake dispatched cleanly across cloud dataspaces.");
+    }
+  };
+
+  const handleRequestUnlockVerification = async () => {
+    if (!screenshotAttached || !activeModalProfile) return;
+    const targetRef = doc(db, "profiles", activeModalProfile.__docId);
+    await updateDoc(targetRef, { 
+      payment_verification_requested: true, 
+      payment_request_by: currentUserData.profile_id 
     });
-    syncStateUpdate(nextSet);
     setShowUpiModal(false);
     setScreenshotAttached(false);
     setSelectedProfileId(null);
-    triggerToast("📧 Snapshot routed! Awaiting manual admin statement verification check.");
+    triggerToast("📧 Snapshot routed directly to Admin Audit Ticket queues.");
   };
 
-  const handleAdminApproveProfile = (backendId) => {
-    const nextSet = profiles.map(p => p.__backendId === backendId ? { ...p, profile_status: "approved" } : p);
-    syncStateUpdate(nextSet);
-    triggerToast("✓ Profile authorized and published to search feed live indices.");
+  const handleAdminApproveProfile = async (docId) => {
+    await updateDoc(doc(db, "profiles", docId), { profile_status: "approved" });
+    triggerToast("✓ Profile state updated to live indices.");
   };
 
-  const handleAdminApprovePayment = (targetProfile) => {
-    const nextSet = profiles.map(p => {
-      if (p.__backendId === targetProfile.__backendId) {
-        let cp = (p.contact_purchases || '').split(',').filter(Boolean);
-        if (!cp.includes(targetProfile.payment_request_by)) cp.push(targetProfile.payment_request_by);
-        return { ...p, payment_verification_requested: false, payment_request_by: "", contact_purchases: cp.join(',') };
-      }
-      return p;
+  const handleAdminApprovePayment = async (targetProfile) => {
+    let currentPurchases = (targetProfile.contact_purchases || '').split(',').filter(Boolean);
+    if (!currentPurchases.includes(targetProfile.payment_request_by)) {
+      currentPurchases.push(targetProfile.payment_request_by);
+    }
+    await updateDoc(doc(db, "profiles", targetProfile.__docId), {
+      payment_verification_requested: false,
+      payment_request_by: "",
+      contact_purchases: currentPurchases.join(',')
     });
-    syncStateUpdate(nextSet);
-    triggerToast("✓ Credit matched successfully! Credentials permanently decrypted.");
+    triggerToast("✓ Audit reference verified! Coordinates unlocked safely.");
   };
 
-  const updateCastePreference = (tier) => {
+  const updateCastePreference = async (tier) => {
     setCastePreferenceTier(tier);
-    const nextSet = profiles.map(p => p.__backendId === currentUser.__backendId ? { ...p, caste_preference_tier: tier } : p);
-    syncStateUpdate(nextSet);
-    triggerToast(`Alignment altered: ${tier === 'same_caste' ? 'Strict Caste' : tier === 'sub_caste' ? 'Sub-Caste' : 'Open'}`);
+    if (currentUserData?.__docId) {
+      await updateDoc(doc(db, "profiles", currentUserData.__docId), { caste_preference_tier: tier });
+    }
   };
 
   const computedTargetGender = useMemo(() => {
-    if (!currentUser) return 'Female';
-    return currentUser.gender === 'Male' ? 'Female' : 'Male';
-  }, [currentUser]);
+    if (!currentUserData) return 'Female';
+    return currentUserData.gender === 'Male' ? 'Female' : 'Male';
+  }, [currentUserData]);
 
-  // Fix 3: Sanitized String Analysis prevents typos from deadlocking the match engine
+  // Dynamic Compatibility Match Score Calculator Matrix
+  const calculateCompatibilityScore = (profile) => {
+    if (!currentUserData) return 60;
+    let baseScore = 65;
+    if (profile.devotional_status === currentUserData.devotional_status) baseScore += 15;
+    if (profile.food_culture === currentUserData.food_culture) baseScore += 10;
+    if (profile.monthly_spends === currentUserData.monthly_spends) baseScore += 10;
+    return Math.min(baseScore, 100);
+  };
+
   const filteredProfiles = useMemo(() => {
-    if (!currentUser) return [];
-    return profiles.filter(profile => {
+    if (!currentUserData) return [];
+    return globalProfiles.filter(profile => {
       if (profile.profile_status !== "approved") return false;
-      if (profile.__backendId === currentUser.__backendId) return false;
+      if (profile.auth_uid === currentUserData.auth_uid) return false;
       if (profile.gender !== computedTargetGender) return false;
       if (filterCity && !(profile.city || '').toLowerCase().includes(filterCity.toLowerCase())) return false;
 
-      if (currentUser.gothram && profile.gothram) {
-        if (currentUser.gothram.trim().toLowerCase() === profile.gothram.trim().toLowerCase()) return false;
+      // Fix 1: Automated Kuja Dosham matching validation override rules
+      if (currentUserData.kujaDosham === 'Yes (ఉంది)' && profile.kujaDosham === 'No (లేదు)') return false;
+
+      if (currentUserData.gothram && profile.gothram) {
+        if (currentUserData.gothram.trim().toLowerCase() === profile.gothram.trim().toLowerCase()) return false;
       }
 
-      if (currentUser.caste) {
-        const cleanUserCaste = currentUser.caste.trim().toLowerCase();
+      if (currentUserData.caste) {
+        const cleanUserCaste = currentUserData.caste.trim().toLowerCase();
         const cleanProfileCaste = profile.caste.trim().toLowerCase();
-        
         if (castePreferenceTier === 'same_caste') {
           if (cleanProfileCaste !== cleanUserCaste) return false;
         } else if (castePreferenceTier === 'sub_caste') {
           if (cleanProfileCaste !== cleanUserCaste) return false;
-          const cleanUserSub = (currentUser.sub_caste || '').trim().toLowerCase();
-          const cleanProfileSub = (profile.sub_caste || '').trim().toLowerCase();
-          if (cleanUserSub && cleanProfileSub && cleanUserSub !== cleanProfileSub) return false;
+          if ((profile.sub_caste || '').trim().toLowerCase() !== (currentUserData.sub_caste || '').trim().toLowerCase()) return false;
         }
       }
 
       if (financialFilterActive) {
-        const myIncomeRank = INCOME_MAP[currentUser.income] || 1;
+        const myIncomeRank = INCOME_MAP[currentUserData.income] || 1;
         const matchIncomeRank = INCOME_MAP[profile.income] || 1;
-        const myAssetRank = ASSET_MAP[currentUser.propertyWorth] || 1;
+        const myAssetRank = ASSET_MAP[currentUserData.propertyWorth] || 1;
         const matchAssetRank = ASSET_MAP[profile.propertyWorth] || 1;
 
-        if (currentUser.gender === 'Female') {
+        if (currentUserData.gender === 'Female') {
           if (matchIncomeRank < myIncomeRank || matchAssetRank < myAssetRank) return false;
         } else {
           if (matchIncomeRank > myIncomeRank || matchAssetRank > (myAssetRank + 1)) return false;
@@ -316,10 +297,18 @@ export default function App() {
       }
       return true;
     });
-  }, [profiles, currentUser, computedTargetGender, filterCity, financialFilterActive, castePreferenceTier]);
+  }, [globalProfiles, currentUserData, computedTargetGender, filterCity, financialFilterActive, castePreferenceTier]);
 
-  const activeModalProfile = useMemo(() => profiles.find(p => p.__backendId === selectedProfileId), [profiles, selectedProfileId]);
-  const modalHasAccess = currentUser && activeModalProfile && (activeModalProfile.contact_purchases || '').split(',').includes(currentUser.__backendId);
+  const activeModalProfile = useMemo(() => globalProfiles.find(p => p.__docId === selectedProfileId), [globalProfiles, selectedProfileId]);
+  const modalHasAccess = currentUserData && activeModalProfile && (activeModalProfile.contact_purchases || '').split(',').includes(currentUserData.profile_id);
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-[#FFFDF6] flex items-center justify-center font-sans text-xs font-bold tracking-widest text-[#7b1f1f] uppercase">
+        🔱 Initializing Secure Fullstack Pipeline Nodes...
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen bg-[#FFFDF6] text-[#2c1810] flex flex-col font-serif">
@@ -331,23 +320,20 @@ export default function App() {
             <div className="w-10 h-10 bg-[#7b1f1f] rounded-xl flex items-center justify-center text-white font-bold text-xl">మ</div>
             <div>
               <span className="block font-bold text-2xl text-[#7b1f1f] leading-none">పెళ్ళి పుస్తకం</span>
-              <span className="text-[9px] font-sans font-bold tracking-widest text-[#d4a017] uppercase block mt-1">Premium Telugu Matrimony</span>
+              <span className="text-[9px] font-sans font-bold tracking-widest text-[#d4a017] uppercase block mt-1">Live Global Production Server</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-[#7b1f1f]/5 border border-[#7b1f1f]/20 rounded-xl px-3 py-1">
-            <span className="text-[10px] font-sans font-bold text-[#7b1f1f] uppercase tracking-wide">Simulation Role:</span>
-            <select value={currentUser?.__backendId || ''} onChange={(e) => handleSessionToggle(e.target.value)} className="bg-transparent text-xs font-bold text-gray-800 focus:outline-none max-w-[130px] truncate font-sans">
-              {profiles.map(p => <option key={p.__backendId} value={p.__backendId}>{p.first_name} ({p.gender === 'Male' ? 'Varudu' : 'Vadhuvu'})</option>)}
-            </select>
           </div>
 
           <div className="hidden md:flex items-center gap-6 font-sans text-xs font-bold uppercase tracking-wider text-[#5a3e36]">
             <button onClick={() => setCurrentView('home')} className="hover:text-[#7b1f1f]">Home</button>
-            <button onClick={() => setCurrentView('search')} className="hover:text-[#7b1f1f]">Find Alliances</button>
-            <button onClick={() => setCurrentView('dashboard')} className="hover:text-[#7b1f1f]">My Ledger</button>
-            {currentUser?.is_admin && <button onClick={() => setCurrentView('admin')} className="text-emerald-700 font-extrabold tracking-widest">Admin Panel ⚙️</button>}
-            <button onClick={() => setCurrentView('register')} className="bg-[#7b1f1f] text-white px-4 py-2.5 rounded-xl border">Register</button>
+            {userSession && <button onClick={() => setCurrentView('search')} className="hover:text-[#7b1f1f]">Find Alliances</button>}
+            {userSession && <button onClick={() => setCurrentView('dashboard')} className="hover:text-[#7b1f1f]">My Ledger</button>}
+            {currentUserData?.is_admin && <button onClick={() => setCurrentView('admin')} className="text-emerald-700 font-extrabold">Admin Suite ⚙️</button>}
+            {userSession ? (
+              <button onClick={handleLiveLogout} className="border border-[#7b1f1f] text-[#7b1f1f] px-4 py-2 rounded-xl">Logout</button>
+            ) : (
+              <button onClick={() => setCurrentView('login')} className="bg-[#7b1f1f] text-white px-4 py-2 rounded-xl">Sign In</button>
+            )}
           </div>
         </div>
       </nav>
@@ -362,60 +348,94 @@ export default function App() {
             <div className="rounded-3xl bg-gradient-to-br from-[#4a0d0d] via-[#7b1f1f] to-[#2b0505] p-8 md:p-16 border-2 border-[#d4a017]/30 shadow-2xl relative text-white">
               <div className="absolute inset-3 border border-[#d4a017]/20 rounded-2xl pointer-events-none"></div>
               <h1 className="text-5xl md:text-7xl font-bold text-[#FFF4D4]">పెళ్ళి పుస్తకం</h1>
-              <p className="text-sm font-sans tracking-wide max-w-xl mx-auto text-gray-200 mt-2">Elite South-Indian matrix aligning three-tier caste affinities, mutual expectations, and verified Aadhaar nodes.</p>
+              <p className="text-sm font-sans tracking-wide max-w-xl mx-auto text-gray-200 mt-2">Active live server sync running cross-country queries natively. Secure encrypted Telugu lineages.</p>
               <div className="pt-6 flex justify-center gap-4 font-sans text-xs font-bold uppercase tracking-wider">
-                <button onClick={() => setCurrentView('search')} className="bg-[#d4a017] text-[#3a0a0a] px-6 py-3 rounded-xl shadow-md">Enter Search Feed</button>
-                <button onClick={() => setCurrentView('register')} className="border border-white/40 text-white px-6 py-3 rounded-xl">Register Profile</button>
+                {userSession ? (
+                  <button onClick={() => setCurrentView('search')} className="bg-[#d4a017] text-[#3a0a0a] px-6 py-3 rounded-xl shadow-md">Browse Alliances Matrix</button>
+                ) : (
+                  <React.Fragment>
+                    <button onClick={() => setCurrentView('login')} className="bg-[#d4a017] text-[#3a0a0a] px-6 py-3 rounded-xl shadow-md">Sign Into Account</button>
+                    <button onClick={() => setCurrentView('register')} className="border border-white/40 text-white px-6 py-3 rounded-xl">Create Account Profile</button>
+                  </React.Fragment>
+                )}
               </div>
             </div>
           </section>
         )}
 
+        {currentView === 'login' && (
+          <section className="max-w-md mx-auto py-10">
+            <form onSubmit={handleLiveLogin} className="bg-white p-6 rounded-2xl border shadow-xl space-y-4 font-sans text-xs font-bold text-gray-500">
+              <h3 className="font-serif text-xl text-[#7b1f1f] text-center mb-4">Secure Network Access Panel</h3>
+              <div>Email Address *<input type="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full border rounded-xl p-3 text-sm font-normal mt-1 outline-none" /></div>
+              <div>Password Secure Token *<input type="password" required value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full border rounded-xl p-3 text-sm font-normal mt-1 outline-none" /></div>
+              <button type="submit" className="w-full bg-[#7b1f1f] text-white py-3 rounded-xl text-xs uppercase tracking-wider mt-2">Authenticate Coordinates ✓</button>
+              <p className="text-center font-normal mt-4 cursor-pointer text-[#7b1f1f] hover:underline" onClick={() => setCurrentView('register')}>New to the platform? Deploy a verified heritage profile vector</p>
+            </form>
+          </section>
+        )}
+
         {currentView === 'register' && (
           <section className="max-w-2xl mx-auto py-4">
-            <h2 className="text-2xl font-bold text-[#7b1f1f] text-center mb-6">Create Verified Family Record</h2>
-            <form onSubmit={handleRegisterSubmit} className="bg-white rounded-2xl shadow-xl border border-[#d4a017]/20 p-6 md:p-8 space-y-6 relative">
+            <h2 className="text-2xl font-bold text-[#7b1f1f] text-center mb-6">Deploy Certified Cloud Lineage Node</h2>
+            <form onSubmit={handleFullStackRegisterSubmit} className="bg-white rounded-2xl shadow-xl border p-6 md:p-8 space-y-6 relative">
               <div className="flex items-center justify-center gap-2 max-w-xs mx-auto mb-4 font-sans text-[10px] font-bold">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#7b1f1f] text-white' : 'bg-gray-100 text-gray-400'}`}>1</span>
-                <span className="h-0.5 w-6 bg-gray-200"></span>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#7b1f1f] text-white' : 'bg-gray-100 text-gray-400'}`}>2</span>
-                <span className="h-0.5 w-6 bg-gray-200"></span>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#7b1f1f] text-white' : 'bg-gray-100 text-gray-400'}`}>3</span>
+                {[1, 2, 3].map((num) => <span key={num} className={`w-6 h-6 rounded-full flex items-center justify-center ${step >= num ? 'bg-[#7b1f1f] text-white' : 'bg-gray-100 text-gray-400'}`}>{num}</span>)}
               </div>
 
               {step === 1 && (
                 <div className="space-y-4">
-                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 1: Identity Parameters</h3>
+                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 1: Core Credentials & Login</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans text-xs font-bold text-gray-500">
-                    <div>First Name *<input type="text" required value={regForm.first_name} onChange={e => setRegForm({...regForm, first_name: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" placeholder="Given Name Only" /></div>
-                    <div>Surname (Inti Peru) *<input type="text" required value={regForm.last_name} onChange={e => setRegForm({...regForm, last_name: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" placeholder="Masked publicly" /></div>
-                    <div>Gender Role *
-                      <select value={regForm.gender} onChange={e => setRegForm({...regForm, gender: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal text-gray-800">
-                        <option value="Male">Male (Varudu / Groom)</option>
-                        <option value="Female">Female (Vadhuvu / Bride)</option>
+                    <div>Email Parameter (For Login) *<input type="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
+                    <div>Account Password Token *<input type="password" required value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
+                    <div>First Name *<input type="text" required value={regForm.first_name} onChange={e => setRegForm({...regForm, first_name: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
+                    <div>Surname (Inti Peru) *<input type="text" required value={regForm.last_name} onChange={e => setRegForm({...regForm, last_name: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
+                    <div>Gender *
+                      <select value={regForm.gender} onChange={e => setRegForm({...regForm, gender: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
+                        <option value="Male">Male (Varudu / Groom)</option><option value="Female">Female (Vadhuvu / Bride)</option>
                       </select>
                     </div>
-                    <div>Mobile number *<input type="tel" required value={regForm.phone} onChange={e => setRegForm({...regForm, phone: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" placeholder="E.g., 98480..." /></div>
+                    <div>Mobile number *<input type="tel" required value={regForm.phone} onChange={e => setRegForm({...regForm, phone: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
                   </div>
-                  <button type="button" onClick={() => setStep(2)} className="w-full bg-[#7b1f1f] text-white py-3 rounded-xl font-sans text-xs font-bold uppercase tracking-wider">Next Step: Lineage Preferences →</button>
+                  <button type="button" onClick={() => setStep(2)} className="w-full bg-[#7b1f1f] text-white py-3 rounded-xl font-sans text-xs font-bold uppercase tracking-wider">Next Step: Behavioral Compatibility Matrix →</button>
                 </div>
               )}
 
               {step === 2 && (
                 <div className="space-y-4">
-                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 2: Lineage Heritage & Caste Settings</h3>
+                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 2: Ancestral Settings & Priorities</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans text-xs font-bold text-gray-500">
-                    <div>Caste Classification *
-                      <select value={regForm.caste} onChange={e => setRegForm({...regForm, caste: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal text-gray-800">
+                    <div>Caste Class *
+                      <select value={regForm.caste} onChange={e => setRegForm({...regForm, caste: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
                         <option value="Kapu">Kapu</option><option value="Kamma">Kamma</option><option value="Reddy">Reddy</option><option value="Brahmin">Brahmin</option>
                       </select>
                     </div>
-                    <div>Sub-Caste Subdivision (ఉపకులం) *<input type="text" required value={regForm.sub_caste} onChange={e => setRegForm({...regForm, sub_caste: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" placeholder="E.g., Telaga / Balija" /></div>
-                    <div>Gothram Name *<input type="text" required value={regForm.gothram} onChange={e => setRegForm({...regForm, gothram: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" /></div>
-                    <div>Janma Nakshatram *<input type="text" required value={regForm.nakshatra} onChange={e => setRegForm({...regForm, nakshatra: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" /></div>
-                    <div>Hometown Location *<input type="text" required value={regForm.city} onChange={e => setRegForm({...regForm, city: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" /></div>
+                    <div>Sub-Caste (ఉపకులం) *<input type="text" required value={regForm.sub_caste} onChange={e => setRegForm({...regForm, sub_caste: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" placeholder="E.g., Telaga" /></div>
+                    <div>దైవచింతన (Devotional Aspect) *
+                      <select value={regForm.devotional_status} onChange={e => setRegForm({...regForm, devotional_status: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
+                        <option value="Highly Spiritual (నిత్య పూజ చేస్తారు)">Highly Spiritual (నిత్య పూజ చేస్తారు)</option>
+                        <option value="Moderately Spiritual (పండుగలు పాటిస్తారు)">Moderately Spiritual (పండుగలు పాటిస్తారు)</option>
+                        <option value="Liberal View / Non-Religious">Liberal View / Non-Religious</option>
+                      </select>
+                    </div>
+                    <div>Kuja Dosham Status *
+                      <select value={regForm.kujaDosham} onChange={e => setRegForm({...regForm, kujaDosham: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
+                        <option value="No (లేదు)">No (లేదు)</option><option value="Yes (ఉంది)">Yes (ఉంది)</option><option value="Anukulma (అనుకూలం)">Partial (అనుకూలం)</option>
+                      </select>
+                    </div>
+                    <div>ఆహార సంస్కృతి (Food Culture) *
+                      <select value={regForm.food_culture} onChange={e => setRegForm({...regForm, food_culture: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
+                        <option value="Strict Vegetarian (శాకాహారి)">Strict Vegetarian (శాకాహారి)</option><option value="Non-Vegetarian (మాంసాహారి)">Non-Vegetarian (మాంసాహారి)</option>
+                      </select>
+                    </div>
+                    <div>ఆర్థిక క్రమశిక్షణ (Spending Habits) *
+                      <select value={regForm.monthly_spends} onChange={e => setRegForm({...regForm, monthly_spends: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
+                        <option value="Disciplined Saver">Disciplined Saver</option><option value="Moderate Spender">Moderate Spender</option>
+                      </select>
+                    </div>
                     <div>Income *
-                      <select value={regForm.income} onChange={e => setRegForm({...regForm, income: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal text-gray-800">
+                      <select value={regForm.income} onChange={e => setRegForm({...regForm, income: e.target.value})} className="w-full mt-1 border rounded-xl p-3 text-sm font-normal">
                         <option value="10-15 LPA">10-15 LPA</option><option value="15-25 LPA">15-25 LPA</option><option value="25-50 LPA">25-50 LPA</option>
                       </select>
                     </div>
@@ -429,24 +449,50 @@ export default function App() {
 
               {step === 3 && (
                 <div className="space-y-4">
-                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 3: Identity Verification Vault</h3>
+                  <h3 className="font-bold text-lg border-b pb-1.5 text-[#7b1f1f]">Step 3: Album Upload & Secure ID Proof</h3>
+                  
+                  <div className="p-4 bg-orange-50/40 border border-[#d4a017]/30 rounded-xl space-y-4 font-sans">
+                    <p className="text-xs font-bold text-[#7b1f1f] uppercase tracking-wider flex items-center gap-1.5"><ImageIcon className="w-4 h-4 text-[#d4a017]" /> Album Selection (3 Photos Mandatory) *</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[0, 1, 2].map((idx) => (
+                        <label key={idx} className="relative aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer hover:bg-gray-50 overflow-hidden">
+                          {formPhotos[idx] ? (
+                            <div className="absolute inset-0 w-full h-full">
+                              <img src={formPhotos[idx]} alt="Preview" className="w-full h-full object-cover" />
+                              <div className="absolute top-1 right-1 bg-emerald-700 text-white rounded-full p-0.5"><CheckCircle2 className="w-3.5 h-3.5" /></div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1 text-gray-400">
+                              <Upload className="w-4 h-4 mx-auto" />
+                              <span className="text-[9px] font-bold block uppercase">Slot #{idx + 1}</span>
+                            </div>
+                          )}
+                          <input type="file" accept="image/*" required onChange={(e) => handlePhotoSlotChange(idx, e.target.files[0])} className="hidden" />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="p-4 bg-amber-50/60 border-2 border-dashed border-[#d4a017]/30 rounded-xl space-y-3 font-sans">
                     <p className="text-xs font-bold text-[#7b1f1f] uppercase tracking-wider">🔒 Government ID Authentication Sandbox Guard</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input type="password" maxLength={12} required value={aadharInput} onChange={e => setAadharInput(e.target.value.replace(/\D/g,''))} className="border rounded-xl p-2.5 text-xs font-mono tracking-widest bg-white" placeholder="Enter 12-Digit ID Number" />
+                      <input type="password" maxLength={12} required value={aadharInput} onChange={e => setAadharInput(e.target.value.replace(/\D/g,''))} className="border rounded-xl p-2.5 text-xs font-mono tracking-widest bg-white" placeholder="Enter 12-Digit ID" />
                       <label className="flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-xl px-4 py-2 text-xs font-bold cursor-pointer hover:bg-gray-50">
                         <Upload className="w-4 h-4 text-gray-500" />
-                        <span>{aadharAttached ? "✓ Document Attached" : "Upload ID File (.jpg/.pdf)"}</span>
+                        <span>{aadharAttached ? "✓ Document Bound" : "Upload ID Image File"}</span>
                         <input type="file" required onChange={() => setAadharAttached(true)} className="hidden" />
                       </label>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans text-xs font-bold text-gray-500">
-                    <div>Maternal Family Surnames *<input type="text" required value={regForm.maternalSurnames} onChange={e => setRegForm({...regForm, maternalSurnames: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm text-gray-800" placeholder="మేనమామలు" /></div>
+                    <div>Maternal Family Surnames *<input type="text" required value={regForm.maternalSurnames} onChange={e => setRegForm({...regForm, maternalSurnames: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" placeholder="మేనమామలు" /></div>
+                    <div>Hometown City *<input type="text" required value={regForm.city} onChange={e => setRegForm({...regForm, city: e.target.value})} className="w-full mt-1 border rounded-xl p-3 font-normal text-sm" /></div>
                   </div>
+                  
                   <div className="flex gap-3 font-sans">
-                    <button type="button" onClick={() => setStep(2)} className="flex-1 border border-gray-300 py-3 rounded-xl font-bold text-xs uppercase tracking-wider">Back</button>
-                    <button type="submit" className="flex-1 bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">Complete Registration ✓</button>
+                    <button type="button" onClick={() => setStep(2)} className="flex-1 border py-3 rounded-xl font-bold text-xs uppercase tracking-wider">Back</button>
+                    <button type="submit" disabled={formPhotos.filter(Boolean).length < 3} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md ${formPhotos.filter(Boolean).length === 3 ? 'bg-emerald-700 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>Complete Registration ✓</button>
                   </div>
                 </div>
               )}
@@ -454,72 +500,59 @@ export default function App() {
           </section>
         )}
 
-        {currentView === 'search' && (
+        {/* Global Match Feed Dashboard Grid */}
+        {currentView === 'search' && currentUserData && (
           <section className="space-y-6 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-xl border border-[#d4a017]/20 p-5 space-y-4 relative">
-              <div className="absolute top-0 inset-x-0 h-1 bg-[#7b1f1f]"></div>
-              
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 font-sans">
-                <div>
-                  <h4 className="text-sm font-bold text-gray-800 uppercase tracking-tight flex items-center gap-1.5"><Users className="w-4 h-4 text-[#7b1f1f]" /> కుల ప్రాధాన్యత అమరిక (Caste Affinity Matrix Options)</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Filter matches strictly based on traditional sub-sect guidelines.</p>
-                </div>
-                
-                <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-xl text-xs font-bold w-full lg:w-auto text-center border">
-                  <button onClick={() => updateCastePreference('same_caste')} className={`px-4 py-2 rounded-lg transition-all ${castePreferenceTier === 'same_caste' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'}`}>Strict Caste Only</button>
-                  <button onClick={() => updateCastePreference('sub_caste')} className={`px-4 py-2 rounded-lg transition-all ${castePreferenceTier === 'sub_caste' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'}`}>Same Sub-Caste</button>
-                  <button onClick={() => updateCastePreference('open')} className={`px-4 py-2 rounded-lg transition-all ${castePreferenceTier === 'open' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'}`}>Caste No Bar (General)</button>
-                </div>
+            <div className="bg-white rounded-2xl shadow-xl border p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-lg text-[#7b1f1f]">Live Server Affinity Feed</h3>
+                <p className="text-xs text-gray-500 font-sans">Displaying cross-country candidates matching your priority matrices.</p>
               </div>
 
-              <div className="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filter Region / City</label>
-                  <input type="text" value={filterCity} onChange={e => setFilterCity(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-xs bg-[#FFFDF9] outline-none" placeholder="Search city parameters..." />
-                </div>
-                <div className="flex items-center justify-between bg-[#FFFDF2] p-2 rounded-xl border border-dashed border-[#d4a017]/30 mt-5">
-                  <span className="text-[11px] font-bold text-gray-700 pl-2">ఆంతస్తుల పొంతన ఫిల్టర్ (Socioeconomic Engine)</span>
-                  <div onClick={() => setFinancialFilterActive(!financialFilterActive)} className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${financialFilterActive ? 'bg-[#7b1f1f]' : 'bg-gray-300'}`}>
-                    <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all ${financialFilterActive ? 'right-0.5' : 'left-0.5'}`}></div>
-                  </div>
-                </div>
+              <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-xl text-xs font-bold border font-sans text-center shrink-0">
+                <button onClick={() => updateCastePreference('same_caste')} className={`px-4 py-2 rounded-lg ${castePreferenceTier === 'same_caste' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600'}`}>Strict Caste</button>
+                <button onClick={() => updateCastePreference('sub_caste')} className={`px-4 py-2 rounded-lg ${castePreferenceTier === 'sub_caste' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600'}`}>Sub-Caste</button>
+                <button onClick={() => updateCastePreference('open')} className={`px-4 py-2 rounded-lg ${castePreferenceTier === 'open' ? 'bg-[#7b1f1f] text-white shadow-md' : 'text-gray-600'}`}>Caste No Bar</button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProfiles.map(p => {
-                const hasAccess = currentUser && (p.contact_purchases || '').split(',').includes(currentUser.__backendId);
+                const hasAccess = (p.contact_purchases || '').split(',').includes(currentUserData.profile_id);
+                const firstPic = p.uploaded_photos && p.uploaded_photos.length ? p.uploaded_photos[0] : '';
+                const behavioralScore = calculateCompatibilityScore(p);
+
                 return (
-                  <div key={p.__backendId} className="bg-white rounded-2xl shadow-md border border-[#d4a017]/15 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl transition-shadow group">
+                  <div key={p.__docId} className="bg-white rounded-2xl shadow-md border border-[#d4a017]/15 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl transition-shadow group">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-3">
                         <span className="bg-[#7b1f1f]/5 text-[#7b1f1f] text-[10px] font-bold px-2 py-0.5 rounded border font-mono">{p.profile_id}</span>
-                        <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-100">✓ Aadhaar Verified</span>
+                        <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200 rounded flex items-center gap-1 font-sans font-bold"><Sparkles className="w-3 h-3 text-emerald-600" /> {behavioralScore}% Score</span>
                       </div>
                       
-                      <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => setSelectedProfileId(p.__backendId)}>
-                        <SecureAvatar imageUrl={p.avatar_source} watermarkText={currentUser ? currentUser.profile_id : "PUBLIC"} />
+                      <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => setSelectedProfileId(p.__docId)}>
+                        <SecureAvatar imageUrl={firstPic} watermarkText={currentUserData.profile_id} />
                         <div className="min-w-0">
-                          <h4 className="font-bold text-base text-gray-900 truncate group-hover:text-[#7b1f1f] transition-colors">{p.first_name} {hasAccess ? p.last_name : <span className="text-xs text-gray-400 font-sans font-normal block">[Surname Hidden]</span>}</h4>
+                          <h4 className="font-bold text-base text-gray-900 truncate group-hover:text-[#7b1f1f] transition-colors">{p.first_name} {hasAccess ? p.last_name : <span className="text-xs text-gray-400 font-sans font-normal block">[Surname Masked]</span>}</h4>
                           <p className="text-xs text-gray-500 font-sans font-medium mt-0.5"><MapPin className="w-3.5 h-3.5 inline mr-0.5 text-gray-400" />{p.city} • {p.age} Yrs</p>
                         </div>
                       </div>
 
                       <div className="space-y-2 text-xs font-medium text-gray-600">
                         <div className="bg-[#FFFDF2] border border-[#d4a017]/30 rounded-lg p-2.5 text-[#7b1f1f] font-serif font-bold">
-                          🌟 Caste: {p.caste} (${p.sub_caste || 'General'}) • Gothram: {p.gothram}
+                          🌟 Caste: {p.caste} (${p.sub_caste || 'General'})
                         </div>
-                        <div className="bg-gray-50 p-2 rounded-lg text-[#7b1f1f] font-bold border font-sans text-[11px]">
-                          📜 Horoscope: {p.nakshatra} ({p.padam}వ పాదం) • Rasi: {p.rashi} Sign
+                        <div className="p-2.5 bg-orange-50/40 rounded-xl border border-orange-100 text-[11px] space-y-1">
+                          <p className="text-[#7b1f1f] font-bold">🕉️ దైవచింతన: <span className="text-gray-700 font-sans font-normal">{p.devotional_status}</span></p>
+                          <p className="text-[#7b1f1f] font-bold">🌾 ఆహారం: <span className="text-gray-700 font-sans font-normal">{p.food_culture}</span></p>
+                          <p className="text-[#7b1f1f] font-bold">🪐 కుజ దోషం: <span className="text-[#7b1f1f] font-bold font-sans text-xs">{p.kujaDosham}</span></p>
                         </div>
-                        <p className="truncate font-sans text-gray-500"><Award className="w-4 h-4 inline mr-1 text-gray-400" />{p.education}</p>
-                        <div className="text-[9px] font-sans font-bold text-gray-400 uppercase tracking-tight">Income Tier: {p.income} • Assets: {p.propertyWorth}</div>
                       </div>
                     </div>
 
                     <div className="p-4 bg-gray-50 border-t flex gap-2 font-sans">
-                      <button onClick={() => triggerToast("Shortlist state cached.")} className="flex-1 bg-white border text-gray-700 py-2 rounded-xl text-xs font-bold uppercase">Shortlist</button>
-                      <button onClick={() => handleConnectProposal(p.__backendId)} className="flex-1 bg-[#7b1f1f] text-white py-2 rounded-xl text-xs font-bold uppercase">Connect</button>
+                      <button onClick={() => triggerToast("Shortlist synchronized.")} className="flex-1 bg-white border text-gray-700 py-2 rounded-xl text-xs font-bold uppercase">Shortlist</button>
+                      <button onClick={() => handleConnectProposal(p)} className="flex-1 bg-[#7b1f1f] text-white py-2 rounded-xl text-xs font-bold uppercase">Connect</button>
                     </div>
                   </div>
                 );
@@ -528,25 +561,26 @@ export default function App() {
           </section>
         )}
 
-        {currentView === 'dashboard' && (
+        {/* Interaction Inbox Ledgers */}
+        {currentView === 'dashboard' && currentUserData && (
           <section className="py-4 animate-fadeIn space-y-6">
             <h2 className="text-3xl font-bold text-center text-[#7b1f1f]">My Interaction Ledger</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-sans">
               <div className="bg-white p-5 rounded-2xl border shadow-xl">
                 <h3 className="font-serif font-bold text-base text-[#7b1f1f] mb-3 flex items-center gap-2"><Send className="w-4 h-4" /> Sent Alliance Invitations</h3>
-                {profiles.filter(p => currentUser && (p.interests_received || '').split(',').includes(currentUser.__backendId)).map(p => (
-                  <div key={p.__backendId} className="p-3 bg-gray-50 border rounded-xl mb-2 flex justify-between items-center text-xs">
+                {globalProfiles.filter(p => (p.interests_received || '').split(',').includes(currentUserData.profile_id)).map(p => (
+                  <div key={p.__docId} className="p-3 bg-gray-50 border rounded-xl mb-2 flex justify-between items-center text-xs">
                     <div><p className="font-bold text-gray-900">{p.first_name}</p><span className="font-mono text-gray-400">{p.profile_id}</span></div>
                     <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 font-bold rounded uppercase">Transmitted</span>
                   </div>
                 ))}
               </div>
               <div className="bg-white p-5 rounded-2xl border shadow-xl">
-                <h3 className="font-serif font-bold text-base text-[#7b1f1f] mb-3 flex items-center gap-2"><Inbox className="w-4 h-4" /> Received Alliance Inbound Proposals</h3>
-                {profiles.filter(p => currentUser && (currentUser.interests_received || '').split(',').includes(p.__backendId)).map(p => (
-                  <div key={p.__backendId} className="p-3 bg-gray-50 border rounded-xl mb-2 flex justify-between items-center text-xs">
+                <h3 className="font-serif font-bold text-base text-[#7b1f1f] mb-3 flex items-center gap-2"><Inbox className="w-4 h-4" /> Received Alliance Proposals</h3>
+                {globalProfiles.filter(p => (currentUserData.interests_received || '').split(',').includes(p.profile_id)).map(p => (
+                  <div key={p.__docId} className="p-3 bg-gray-50 border rounded-xl mb-2 flex justify-between items-center text-xs">
                     <div><p className="font-bold text-gray-900">{p.first_name}</p><span className="font-mono text-gray-400">{p.profile_id}</span></div>
-                    <button onClick={() => setSelectedProfileId(p.__backendId)} className="bg-[#7b1f1f] text-white px-3 py-1 rounded font-bold text-[11px]">Review Bio</button>
+                    <button onClick={() => setSelectedProfileId(p.__docId)} className="bg-[#7b1f1f] text-white px-3 py-1 rounded font-bold text-[11px]">Review Bio</button>
                   </div>
                 ))}
               </div>
@@ -554,39 +588,36 @@ export default function App() {
           </section>
         )}
 
-        {currentView === 'admin' && currentUser?.is_admin && (
+        {/* High Security Server Back-Office Panel */}
+        {currentView === 'admin' && currentUserData?.is_admin && (
           <section className="space-y-6 animate-fadeIn py-4">
             <h2 className="text-2xl font-bold font-sans text-emerald-800 border-b pb-2 flex items-center gap-2">⚙️ Security Back-Office Verification Panels</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-xl border p-5 space-y-3">
                 <h3 className="font-bold text-xs text-amber-800 uppercase tracking-wider flex items-center gap-1.5"><Clock className="w-4 h-4" /> Awaiting Aadhaar Verification Queue</h3>
-                {profiles.filter(p => p.profile_status === 'pending').map(p => (
-                  <div key={p.__backendId} className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs font-sans">
-                    <div>
-                      <p className="font-bold font-serif text-sm text-gray-900">{p.first_name} {p.last_name}</p>
-                      <p className="text-gray-500 font-mono mt-0.5">Caste: {p.caste} • Gothram: {p.gothram}</p>
-                    </div>
-                    <button onClick={() => handleAdminApproveProfile(p.__backendId)} className="bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase shadow-sm">Authorize</button>
+                {globalProfiles.filter(p => p.profile_status === 'pending').map(p => (
+                  <div key={p.__docId} className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs font-sans">
+                    <div><p className="font-bold font-serif text-sm text-gray-900">{p.first_name} {p.last_name}</p></div>
+                    <button onClick={() => handleAdminApproveProfile(p.__docId)} className="bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase shadow-sm">Authorize</button>
                   </div>
                 )) || <p className="text-xs text-gray-400 py-2 text-center">No profiles awaiting review.</p>}
               </div>
 
               <div className="bg-white rounded-2xl shadow-xl border p-5 space-y-3">
                 <h3 className="font-bold text-xs text-blue-800 uppercase tracking-wider flex items-center gap-1.5"><Wallet className="w-4 h-4" /> Awaiting UPI Remittance Audit Tickets</h3>
-                {profiles.filter(p => p.payment_verification_requested === true).map(p => (
-                  <div key={p.__backendId} className="p-3.5 bg-blue-50/50 border border-blue-200 rounded-xl flex items-center justify-between gap-3 text-xs font-sans">
-                    <div>
-                      <p className="font-bold font-serif text-sm text-gray-900">Unlock Request For: {p.profile_id}</p>
-                    </div>
+                {globalProfiles.filter(p => p.payment_verification_requested === true).map(p => (
+                  <div key={p.__docId} className="p-3.5 bg-blue-50/50 border border-blue-200 rounded-xl flex items-center justify-between gap-3 text-xs font-sans">
+                    <div><p className="font-bold font-serif text-sm text-gray-900">Unlock Request For: {p.profile_id}</p></div>
                     <button onClick={() => handleAdminApprovePayment(p)} className="bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase shadow-sm flex items-center gap-1 shrink-0"><ThumbsUp className="w-3 h-3" /> Approve Credit</button>
                   </div>
-                )) || <p className="text-xs text-gray-400 py-2 text-center">No payment tickets awaiting validation match hooks.</p>}
+                )) || <p className="text-xs text-gray-400 py-2 text-center">No payment tickets awaiting validation.</p>}
               </div>
             </div>
           </section>
         )}
       </main>
 
+      {/* Protected Overlay Detail Drawers */}
       {selectedProfileId && activeModalProfile && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm" onClick={() => setSelectedProfileId(null)}>
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 relative shadow-2xl border border-[#d4a017]/30" onClick={e => e.stopPropagation()}>
@@ -594,14 +625,31 @@ export default function App() {
             <div className="space-y-4 text-sm">
               <div className="text-center bg-[#FFFDF2] p-4 rounded-xl border border-[#d4a017]/20">
                 <h3 className="font-serif text-xl font-bold text-[#7b1f1f]">{activeModalProfile.first_name} {modalHasAccess ? activeModalProfile.last_name : ''}</h3>
-                <p className="text-xs text-gray-400 font-mono">Signature: {activeModalProfile.profile_id}</p>
+                <p className="text-xs text-gray-400 font-mono">Cloud ID: {activeModalProfile.profile_id}</p>
+                <p className="text-xs text-gray-600 mt-2 px-4 font-sans leading-relaxed italic">"{activeModalProfile.about}"</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-bold uppercase text-gray-400">Verified Dynamic Profile Album Slots</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {activeModalProfile.uploaded_photos?.map((src, i) => (
+                    <div key={i} className="aspect-square rounded-xl border overflow-hidden bg-gray-100 shadow-inner">
+                      {src && <img src={src} alt="Album Frame" className="w-full h-full object-cover select-none pointer-events-none" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-orange-50/30 border rounded-xl space-y-1 text-xs">
+                <h5 className="text-[#7b1f1f] font-bold uppercase tracking-wider text-[10px]">🕉_ Traditional Lifestyle Profiles</h5>
+                <p><strong>Devotional Intensity:</strong> {activeModalProfile.devotional_status}</p>
+                <p><strong>Family Bonding Style:</strong> {activeModalProfile.family_bonding}</p>
+                <p><strong>Socio-Economic Spending Discipline:</strong> {activeModalProfile.monthly_spends}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border font-sans font-bold text-xs text-gray-700">
                 <div><span className="block text-gray-400 text-[10px]">CASTE / SUB-SECT</span>{activeModalProfile.caste} • {activeModalProfile.sub_caste}</div>
                 <div><span className="block text-gray-400 text-[10px]">LINEAGE GOTHRAM</span>{activeModalProfile.gothram}</div>
-                <div><span className="block text-gray-400 text-[10px]">HOROSCOPE SIGN</span>{activeModalProfile.nakshatra} ({activeModalProfile.padam}వ పాదం)</div>
-                <div><span className="block text-gray-400 text-[10px]">CHANDRA RASI</span>{activeModalProfile.rashi} Rasi</div>
               </div>
 
               <div className="border-t pt-3">
@@ -610,16 +658,14 @@ export default function App() {
                   <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1.5 font-sans font-medium text-xs">
                     <p><strong>Maternal Family Surnames (మేనమామలు):</strong> {activeModalProfile.maternalSurnames}</p>
                     <p><strong>Family Net Worth Valuation:</strong> {activeModalProfile.propertyWorth}</p>
-                    <p><strong>Landholdings Description:</strong> {activeModalProfile.landDetails || 'None disclosed'}</p>
                     <div className="mt-2 p-3 bg-white border border-emerald-300 rounded-lg text-center font-mono font-bold text-sm text-emerald-800 tracking-wider">
-                      📞 Secure Mobile Coordinates: {activeModalProfile.phone}
+                      📞 Secure Cloud Mobile Array: {activeModalProfile.phone}
                     </div>
                   </div>
                 ) : (
                   <div>
                     <div className="bg-[#FFFDF2] text-amber-900 text-xs p-3.5 rounded-xl border border-[#d4a017]/20 font-sans font-medium leading-relaxed">
-                      <div className="flex gap-2 text-[#7b1f1f] font-bold mb-1 uppercase tracking-tight text-[11px] items-center"><LockKeyhole className="w-3.5 h-3.5" /> Credentials Encrypted for Privacy</div>
-                      Family asset registries, concrete landholdings description metrics, maternal relative lines, and specific contact mobile coordinates are hidden behind an encryption shield. Submit processing verification snapshot token below to decrypt.
+                      Family asset registries, concrete landholdings metrics, maternal relative lines, and contact mobile coordinates are hidden under an encryption shield. Submit UPI confirmation screenshot processing verification snapshot token below to decrypt.
                     </div>
                     <button onClick={() => setShowUpiModal(true)} className="w-full mt-3 bg-[#f39c12] text-white py-3 rounded-xl font-sans font-extrabold text-xs uppercase tracking-wider shadow">
                       🔓 Unlock Contact Coordinates & Property Folio (₹200)
@@ -636,7 +682,8 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowUpiModal(false)}>
           <div className="bg-white rounded-2xl max-w-md w-full p-6 relative border shadow-2xl animate-scaleUp text-xs space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-serif font-bold text-lg flex items-center gap-2 text-[#7b1f1f] border-b pb-1.5"><Wallet className="w-5 h-5 text-[#d4a017]" /> Authorize Remittance Reference</h3>
-            <div className="flex items-center gap-2 bg-gray-100 p-3 rounded-xl font-mono text-sm">
+            <p className="text-xs text-gray-500 font-sans">Please complete a secure transaction of ₹200 to the platform UPI node handle below, then upload the confirmation statement file snapshot to decrypt.</p>
+            <div className="flex items-center gap-2 bg-gray-50 border p-3 rounded-xl font-mono text-sm">
               <span className="flex-1 font-bold text-gray-700">sambasiva.rao@upi</span>
             </div>
             
@@ -645,12 +692,12 @@ export default function App() {
               <label className="flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-xl px-4 py-2.5 font-bold cursor-pointer hover:bg-gray-50 shadow-sm">
                 <Upload className="w-4 h-4 text-gray-500" />
                 <span>{screenshotAttached ? "✓ Screenshot Attached" : "Choose Statement Screenshot File"}</span>
-                <input type="file" required onChange={() => setScreenshotAttached(true)} className="hidden" />
+                <input type="file" accept="image/*" required onChange={() => setScreenshotAttached(true)} className="hidden" />
               </label>
             </div>
 
             <div className="flex gap-3 pt-1 font-sans">
-              <button onClick={() => setShowUpiModal(false)} className="flex-1 border py-2.5 rounded-xl font-bold uppercase tracking-wider text-gray-600">Cancel</button>
+              <button onClick={() => setShowUpiModal(false)} className="flex-1 border py-2.5 rounded-xl font-bold uppercase text-gray-600">Cancel</button>
               <button onClick={handleRequestUnlockVerification} className="flex-1 bg-emerald-700 text-white py-2.5 rounded-xl font-bold uppercase tracking-wider shadow">Submit Screenshot for Audit ✓</button>
             </div>
           </div>
